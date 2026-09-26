@@ -43,6 +43,7 @@ export function refusalText(system: GearSystem, gearId: string, axleId: string):
 }
 
 export interface Hud {
+  setGoal(goal: Goal): void;
   setStatus(status: GoalStatus): void;
   /** A passing note under the status, such as why a drop is refused; `null` hides it. */
   setHint(text: string | null): void;
@@ -63,6 +64,9 @@ export function createHud(parent: HTMLElement, goal: Goal): Hud {
   parent.append(hud);
 
   return {
+    setGoal(next) {
+      goalLine.textContent = goalText(next);
+    },
     setStatus(status) {
       const text = statusText(status);
       if (statusLine.textContent === text) return;

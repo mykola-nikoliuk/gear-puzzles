@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
-import { checkGoal } from './core/goal';
+import { checkGoal, type Goal } from './core/goal';
+import type { GearSystem } from './core/model';
 import { demoGoal, demoLevel } from './levels/demo';
 import { Clock } from './render/clock';
 import { enableGearDragging } from './render/dragGears';
@@ -9,7 +10,7 @@ import { LevelView } from './render/levelView';
 import { Simulation } from './render/simulation';
 import { createHud } from './ui/hud';
 import { AxleLabels } from './ui/labels';
-import { createPanel } from './ui/panel';
+import { createPanel, type ActiveLevel } from './ui/panel';
 
 function getContainer(): HTMLElement {
   const element = document.getElementById('app');
@@ -37,19 +38,51 @@ const sun = new THREE.DirectionalLight('#ffffff', 1.2);
 sun.position.set(-20, -30, 60);
 scene.add(sun);
 
-const level = new LevelView(demoLevel);
-const simulation = new Simulation(demoLevel);
-scene.add(level.root);
-level.markGoal(demoGoal.axleId);
-const labels = new AxleLabels(demoLevel, level.pinTop);
-scene.add(labels.root);
 const hud = createHud(container, demoGoal);
-
-const bounds = level.bounds;
-const center = new THREE.Vector3((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);
 const camera = new THREE.PerspectiveCamera(35);
 const tilt = { value: 0.6, onChange: () => resize() };
 const MARGIN = 1.15;
+const clock = new Clock();
+const now = () => clock.now();
+
+interface Mounted extends ActiveLevel {
+  readonly labelSet: AxleLabels;
+  unmount(): void;
+}
+
+/** Builds the scene objects, simulation and input for one level. */
+function mount(start: GearSystem, goal: Goal): Mounted {
+  const view = new LevelView(start);
+  view.markGoal(goal.axleId);
+  const labelSet = new AxleLabels(start, view.pinTop);
+  scene.add(view.root, labelSet.root);
+  const simulation = new Simulation(start, now());
+  const stopDragging = enableGearDragging({
+    canvas: renderer.domElement,
+    camera,
+    view,
+    simulation,
+    now,
+    onRefusal: hud.setHint,
+  });
+  hud.setGoal(goal);
+
+  return {
+    simulation,
+    view,
+    labels: labelSet.root,
+    labelSet,
+    start,
+    goal,
+    unmount() {
+      stopDragging();
+      hud.setHint(null);
+      scene.remove(view.root, labelSet.root);
+    },
+  };
+}
+
+const active = mount(demoLevel, demoGoal);
 
 /** Moves the camera back until the whole level fits, looking down at a slight tilt. */
 function resize() {
@@ -57,6 +90,11 @@ function resize() {
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
 
+  const bounds = active.view.bounds;
+  const center = new THREE.Vector3(
+    (bounds.minX + bounds.maxX) / 2,
+    (bounds.minY + bounds.maxY) / 2,
+  );
   const halfHeight = (bounds.maxY - bounds.minY) / 2;
   const halfWidth = (bounds.maxX - bounds.minX) / 2 / camera.aspect;
   const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
@@ -71,30 +109,12 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-const clock = new Clock();
-const now = () => clock.now();
-enableGearDragging({
-  canvas: renderer.domElement,
-  camera,
-  view: level,
-  simulation,
-  now,
-  onRefusal: hud.setHint,
-});
-createPanel({
-  simulation,
-  clock,
-  view: level,
-  labels: labels.root,
-  start: demoLevel,
-  goal: demoGoal,
-  tilt,
-});
+createPanel({ clock, level: () => active, tilt });
 
 renderer.setAnimationLoop(() => {
-  level.setAngles(simulation.anglesAt(now()));
-  hud.setStatus(checkGoal(simulation.state, demoGoal));
-  labels.update(simulation.system, simulation.state);
+  active.view.setAngles(active.simulation.anglesAt(now()));
+  hud.setStatus(checkGoal(active.simulation.state, active.goal));
+  active.labelSet.update(active.simulation.system, active.simulation.state);
   renderer.render(scene, camera);
   labelRenderer.render(scene, camera);
 });

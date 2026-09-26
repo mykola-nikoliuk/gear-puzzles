@@ -29,30 +29,44 @@ export function solveLabel(solution: Solution | null): string {
   return `Solve: ${count} ${count === 1 ? 'move' : 'moves'}`;
 }
 
-interface Options {
+/** Everything the panel touches that belongs to the level on screen. */
+export interface ActiveLevel {
   readonly simulation: Simulation;
-  readonly clock: Clock;
   readonly view: LevelView;
   readonly labels: THREE.Object3D;
   readonly start: GearSystem;
   readonly goal: Goal;
+}
+
+interface Options {
+  readonly clock: Clock;
+  /** The level on screen now; it changes when a new one is mounted. */
+  readonly level: () => ActiveLevel;
   /** Camera tilt from 0 (straight down) to 1; the callback re-frames the camera. */
   readonly tilt: { value: number; onChange: () => void };
 }
 
+export interface Panel {
+  readonly gui: GUI;
+  /** Applies the panel's settings (motor, looks) to a freshly mounted level. */
+  sync(): void;
+}
+
 /** A developer panel for poking at the demo: motor, looks and layout shortcuts. */
-export function createPanel({ simulation, clock, view, labels, start, goal, tilt }: Options): GUI {
+export function createPanel({ clock, level, tilt }: Options): Panel {
   const gui = new GUI({ title: 'Gear Puzzles' });
   const state = {
     speed: '1/4' as MotorSpeed,
     reversed: false,
     paused: false,
     thickness: 1,
+    labels: true,
     reset: () => {
       solveButton.name('Solve');
-      setLayout(start);
+      setLayout(level().start);
     },
     solve: () => {
+      const { simulation, goal } = level();
       const solution = solve(simulation.system, goal);
       solveButton.name(solveLabel(solution));
       if (solution) replay(solution.moves);
@@ -61,19 +75,25 @@ export function createPanel({ simulation, clock, view, labels, start, goal, tilt
 
   const driverVelocity = () => motorVelocity(state.speed, state.reversed);
   const setLayout = (layout: GearSystem) => {
+    const { simulation, view } = level();
     const system = { ...layout, driver: { ...layout.driver, velocity: driverVelocity() } };
     simulation.setSystem(system, clock.now());
     view.placeGears(system);
   };
-  const updateMotor = () => setLayout(simulation.system);
+  const updateMotor = () => setLayout(level().simulation.system);
+  const updateLooks = () => {
+    level().view.setThickness(state.thickness);
+    level().labels.visible = state.labels;
+  };
 
   /** Plays the moves one by one; stops if the player has changed the board in between. */
   const replay = ([move, ...rest]: readonly Move[]) => {
     if (!move) return;
     setTimeout(() => {
       const { gearId, axleId, layer } = move;
-      if (placementError(simulation.system, gearId, axleId, layer) !== null) return;
-      setLayout(moveGear(simulation.system, gearId, axleId, layer));
+      const { system } = level().simulation;
+      if (placementError(system, gearId, axleId, layer) !== null) return;
+      setLayout(moveGear(system, gearId, axleId, layer));
       replay(rest);
     }, MOVE_DELAY);
   };
@@ -90,16 +110,20 @@ export function createPanel({ simulation, clock, view, labels, start, goal, tilt
     .onChange((paused: boolean) => (clock.paused = paused));
 
   const looks = gui.addFolder('View');
-  looks
-    .add(state, 'thickness', 0.3, 1.4, 0.05)
-    .name('Gear thickness')
-    .onChange((scale: number) => view.setThickness(scale));
-  looks.add(labels, 'visible').name('Axle labels');
+  looks.add(state, 'thickness', 0.3, 1.4, 0.05).name('Gear thickness').onChange(updateLooks);
+  looks.add(state, 'labels').name('Axle labels').onChange(updateLooks);
   looks.add(tilt, 'value', 0, 1.2, 0.05).name('Camera tilt').onChange(tilt.onChange);
 
-  const level = gui.addFolder('Level');
-  level.add(state, 'reset').name('Reset');
-  const solveButton = level.add(state, 'solve').name('Solve');
+  const layout = gui.addFolder('Level');
+  layout.add(state, 'reset').name('Reset');
+  const solveButton = layout.add(state, 'solve').name('Solve');
 
-  return gui;
+  return {
+    gui,
+    sync() {
+      solveButton.name('Solve');
+      updateMotor();
+      updateLooks();
+    },
+  };
 }
