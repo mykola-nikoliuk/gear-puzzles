@@ -3,6 +3,8 @@
 Gear-train puzzles in the browser: take gears from the tray and put them on the pins so the output
 axle turns at the target speed and direction.
 
+**[Play it in the browser](https://mykola-nikoliuk.github.io/gear-puzzles/)**
+
 ![The solved demo level turning](docs/demo.gif)
 
 ## What's inside
