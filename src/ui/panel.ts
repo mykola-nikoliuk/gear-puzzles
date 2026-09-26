@@ -4,7 +4,8 @@ import { fraction, negate, type Fraction } from '../core/fraction';
 import type { Goal } from '../core/goal';
 import type { GearSystem } from '../core/model';
 import { moveGear, placementError } from '../core/placement';
-import { solve, type Move, type Solution } from '../core/solver';
+import { movesTo, solve, type Move, type Solution } from '../core/solver';
+import type { LevelOptions } from '../levels/generate';
 import type { Clock } from '../render/clock';
 import type { LevelView } from '../render/levelView';
 import type { Simulation } from '../render/simulation';
@@ -18,6 +19,9 @@ export function motorVelocity(speed: MotorSpeed, reversed: boolean): Fraction {
   const velocity = fraction(num, den);
   return reversed ? negate(velocity) : velocity;
 }
+
+/** Layouts the solver may explore before the panel falls back to the known answer. */
+const SOLVE_BUDGET = 20_000;
 
 /** Pause between replayed solver moves, in milliseconds. */
 const MOVE_DELAY = 700;
@@ -36,6 +40,13 @@ export interface ActiveLevel {
   readonly labels: THREE.Object3D;
   readonly start: GearSystem;
   readonly goal: Goal;
+  /** A known answer, for levels too big for the solver to search in time. */
+  readonly solution?: GearSystem;
+}
+
+/** What the Generate folder asks for. */
+export interface GenerateRequest extends Required<LevelOptions> {
+  readonly seed: number;
 }
 
 interface Options {
@@ -44,6 +55,10 @@ interface Options {
   readonly level: () => ActiveLevel;
   /** Camera tilt from 0 (straight down) to 1; the callback re-frames the camera. */
   readonly tilt: { value: number; onChange: () => void };
+  /** Mounts a generated level. */
+  readonly generate: (request: GenerateRequest) => void;
+  /** Mounts the hand-made demo level again. */
+  readonly demo: () => void;
 }
 
 export interface Panel {
@@ -53,7 +68,7 @@ export interface Panel {
 }
 
 /** A developer panel for poking at the demo: motor, looks and layout shortcuts. */
-export function createPanel({ clock, level, tilt }: Options): Panel {
+export function createPanel({ clock, level, tilt, generate, demo }: Options): Panel {
   const gui = new GUI({ title: 'Gear Puzzles' });
   const state = {
     speed: '1/4' as MotorSpeed,
@@ -66,8 +81,11 @@ export function createPanel({ clock, level, tilt }: Options): Panel {
       setLayout(level().start);
     },
     solve: () => {
-      const { simulation, goal } = level();
-      const solution = solve(simulation.system, goal);
+      const { simulation, goal, solution: known } = level();
+      const { system } = simulation;
+      const solution =
+        solve(system, goal, { maxStates: SOLVE_BUDGET }) ??
+        (known ? { moves: movesTo(system, known), system: known } : null);
       solveButton.name(solveLabel(solution));
       if (solution) replay(solution.moves);
     },
@@ -117,6 +135,26 @@ export function createPanel({ clock, level, tilt }: Options): Panel {
   const layout = gui.addFolder('Level');
   layout.add(state, 'reset').name('Reset');
   const solveButton = layout.add(state, 'solve').name('Solve');
+
+  const request = { seed: 1, axles: 3, compoundChance: 0.4, spareAxles: 2, decoys: 2, keep: 0 };
+  const generator = gui.addFolder('Generate');
+  const seedField = generator.add(request, 'seed', 1, 99_999, 1).name('Seed');
+  generator.add(request, 'axles', 1, 6, 1).name('Train axles');
+  generator.add(request, 'compoundChance', 0, 1, 0.1).name('Compound chance');
+  generator.add(request, 'spareAxles', 0, 5, 1).name('Spare axles');
+  generator.add(request, 'decoys', 0, 5, 1).name('Decoy gears');
+  generator.add(request, 'keep', 0, 3, 1).name('Hints in place');
+  const actions = {
+    generate: () => generate({ ...request }),
+    random: () => {
+      seedField.setValue(Math.floor(Math.random() * 99_999) + 1);
+      generate({ ...request });
+    },
+    demo,
+  };
+  generator.add(actions, 'generate').name('Generate');
+  generator.add(actions, 'random').name('Random level');
+  generator.add(actions, 'demo').name('Back to the demo');
 
   return {
     gui,

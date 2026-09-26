@@ -4,6 +4,7 @@ import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { checkGoal, type Goal } from './core/goal';
 import type { GearSystem } from './core/model';
 import { demoGoal, demoLevel } from './levels/demo';
+import { generateLevel } from './levels/generate';
 import { Clock } from './render/clock';
 import { enableGearDragging } from './render/dragGears';
 import { LevelView } from './render/levelView';
@@ -51,7 +52,7 @@ interface Mounted extends ActiveLevel {
 }
 
 /** Builds the scene objects, simulation and input for one level. */
-function mount(start: GearSystem, goal: Goal): Mounted {
+function mount(start: GearSystem, goal: Goal, solution?: GearSystem): Mounted {
   const view = new LevelView(start);
   view.markGoal(goal.axleId);
   const labelSet = new AxleLabels(start, view.pinTop);
@@ -74,15 +75,17 @@ function mount(start: GearSystem, goal: Goal): Mounted {
     labelSet,
     start,
     goal,
+    ...(solution ? { solution } : {}),
     unmount() {
       stopDragging();
       hud.setHint(null);
       scene.remove(view.root, labelSet.root);
+      labelSet.dispose();
     },
   };
 }
 
-const active = mount(demoLevel, demoGoal);
+let active = mount(demoLevel, demoGoal);
 
 /** Moves the camera back until the whole level fits, looking down at a slight tilt. */
 function resize() {
@@ -109,7 +112,28 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-createPanel({ clock, level: () => active, tilt });
+/** Swaps the level on screen, keeping the panel's settings. */
+function load(start: GearSystem, goal: Goal, solution?: GearSystem) {
+  active.unmount();
+  active = mount(start, goal, solution);
+  resize();
+  panel.sync();
+}
+
+const panel = createPanel({
+  clock,
+  level: () => active,
+  tilt,
+  generate: ({ seed, ...options }) => {
+    try {
+      const { level, goal, solution } = generateLevel(seed, options);
+      load(level, goal, solution);
+    } catch (error) {
+      hud.setHint(error instanceof Error ? error.message : String(error));
+    }
+  },
+  demo: () => load(demoLevel, demoGoal),
+});
 
 renderer.setAnimationLoop(() => {
   active.view.setAngles(active.simulation.anglesAt(now()));

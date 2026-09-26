@@ -37,6 +37,15 @@ export class AxleLabels {
     }
   }
 
+  /** Takes the labels' HTML off the page; removing `root` from the scene alone leaves it behind. */
+  dispose(): void {
+    for (const { object } of this.labels.values()) {
+      object.removeFromParent();
+      object.element.remove();
+    }
+    this.labels.clear();
+  }
+
   update(system: GearSystem, propagation: Propagation): void {
     for (const [axleId, label] of this.labels) {
       const text = axleSpeed(system, propagation, axleId) ?? '';
