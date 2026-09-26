@@ -1,6 +1,7 @@
 import { negate, toString } from '../core/fraction';
 import type { Goal, GoalStatus } from '../core/goal';
-import type { Velocity } from '../core/model';
+import { LAYERS, type GearSystem, type Velocity } from '../core/model';
+import { placementError } from '../core/placement';
 
 /** "1/16 turn/s ↺" — the arrow shows the direction, counter-clockwise for positive. */
 export function formatVelocity(velocity: Velocity, { unit = true } = {}): string {
@@ -28,21 +29,48 @@ export function statusText(status: GoalStatus): string {
   }
 }
 
-/** A small overlay with the goal and the live status; returns a function to update the status. */
-export function createHud(parent: HTMLElement, goal: Goal): (status: GoalStatus) => void {
+/** Why a gear cannot be dropped on an axle, or `null` if some layer there takes it. */
+export function refusalText(system: GearSystem, gearId: string, axleId: string): string | null {
+  const errors = Array.from({ length: LAYERS }, (_, layer) =>
+    placementError(system, gearId, axleId, layer),
+  );
+  if (errors.includes(null)) return null;
+  if (errors.includes('driver')) return 'The motor axle takes no other gears';
+  if (errors.includes('collides')) return 'Its teeth would clash with a neighbour';
+  if (errors.every((error) => error === 'occupied')) return 'Both layers of this axle are taken';
+  return 'The gear cannot go here';
+}
+
+export interface Hud {
+  setStatus(status: GoalStatus): void;
+  /** A passing note under the status, such as why a drop is refused; `null` hides it. */
+  setHint(text: string | null): void;
+}
+
+/** A small overlay with the goal, the live status and a hint line. */
+export function createHud(parent: HTMLElement, goal: Goal): Hud {
   const hud = document.createElement('div');
   hud.className = 'hud';
   const goalLine = document.createElement('div');
   goalLine.textContent = goalText(goal);
   const statusLine = document.createElement('div');
   statusLine.className = 'hud-status';
-  hud.append(goalLine, statusLine);
+  const hintLine = document.createElement('div');
+  hintLine.className = 'hud-hint';
+  hintLine.hidden = true;
+  hud.append(goalLine, statusLine, hintLine);
   parent.append(hud);
 
-  return (status) => {
-    const text = statusText(status);
-    if (statusLine.textContent === text) return;
-    statusLine.textContent = text;
-    statusLine.dataset.kind = status.kind;
+  return {
+    setStatus(status) {
+      const text = statusText(status);
+      if (statusLine.textContent === text) return;
+      statusLine.textContent = text;
+      statusLine.dataset.kind = status.kind;
+    },
+    setHint(text) {
+      hintLine.textContent = text ?? '';
+      hintLine.hidden = text === null;
+    },
   };
 }

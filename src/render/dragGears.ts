@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Gear, GearSystem } from '../core/model';
 import { bestLayer, moveGear, nearestAxle } from '../core/placement';
 import { GEAR_THICKNESS, layerElevation } from './gearMesh';
+import { refusalText } from '../ui/hud';
 import type { LevelView } from './levelView';
 import type { Simulation } from './simulation';
 
@@ -15,6 +16,8 @@ interface Options {
   readonly simulation: Simulation;
   /** Current time in seconds, on the same clock as the animation loop. */
   readonly now: () => number;
+  /** Why the gear cannot drop where it hovers, or `null` once it can. */
+  readonly onRefusal?: (text: string | null) => void;
 }
 
 interface Drag {
@@ -29,7 +32,14 @@ interface Drag {
  * While carried, the gear leaves the simulation, so the rest of the train reacts at once.
  * Returns a function that removes the listeners.
  */
-export function enableGearDragging({ canvas, camera, view, simulation, now }: Options) {
+export function enableGearDragging({
+  canvas,
+  camera,
+  view,
+  simulation,
+  now,
+  onRefusal = () => {},
+}: Options) {
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
   let drag: Drag | null = null;
@@ -91,6 +101,7 @@ export function enableGearDragging({ canvas, camera, view, simulation, now }: Op
     const { axle, layer } = target(point, drag);
     view.hoverGear(drag.gear.id, point.x, point.y, layer ?? drag.gear.layer);
     view.highlight(drag.gear.id, axle ? (layer !== null ? 'valid' : 'invalid') : null);
+    onRefusal(axle && layer === null ? refusalText(drag.layout, drag.gear.id, axle.id) : null);
   };
 
   const onPointerUp = (event: PointerEvent) => {
@@ -109,6 +120,7 @@ export function enableGearDragging({ canvas, camera, view, simulation, now }: Op
     simulation.setSystem(layout, now());
     view.placeGears(layout);
     view.highlight(drag.gear.id, null);
+    onRefusal(null);
     canvas.releasePointerCapture(event.pointerId);
     canvas.style.cursor = 'grab';
     drag = null;

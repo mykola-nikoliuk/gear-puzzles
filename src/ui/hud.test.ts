@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { fraction } from '../core/fraction';
-import { formatVelocity, goalText, statusText } from './hud';
+import { moveGear } from '../core/placement';
+import { demoSolution } from '../levels/demo';
+import { formatVelocity, goalText, refusalText, statusText } from './hud';
 
 describe('formatVelocity', () => {
   it('shows counter-clockwise speeds with ↺', () => {
@@ -35,5 +37,25 @@ describe('texts', () => {
     expect(statusText({ kind: 'wrong-speed', velocity: fraction(1, 2) })).toBe(
       'The output turns at 1/2 turn/s ↺',
     );
+  });
+});
+
+describe('refusalText', () => {
+  it('says nothing when some layer takes the gear', () => {
+    expect(refusalText(demoSolution, 'idler-gear', 'spare-west')).toBeNull();
+  });
+
+  it('explains the motor axle', () => {
+    expect(refusalText(demoSolution, 'idler-gear', 'motor')).toMatch(/motor/);
+  });
+
+  it('explains clashing teeth', () => {
+    expect(refusalText(demoSolution, 'idler-gear', 'output')).toMatch(/clash/);
+  });
+
+  it('explains a full axle', () => {
+    const idlerOnTop = moveGear(demoSolution, 'output-gear', null);
+    const full = moveGear(idlerOnTop, 'compound-small', 'idler', 1);
+    expect(refusalText(full, 'output-gear', 'idler')).toMatch(/Both layers/);
   });
 });

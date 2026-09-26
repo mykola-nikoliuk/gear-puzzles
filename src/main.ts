@@ -43,7 +43,7 @@ scene.add(level.root);
 level.markGoal(demoGoal.axleId);
 const labels = new AxleLabels(demoLevel, level.pinTop);
 scene.add(labels.root);
-const updateHud = createHud(container, demoGoal);
+const hud = createHud(container, demoGoal);
 
 const bounds = level.bounds;
 const center = new THREE.Vector3((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);
@@ -73,7 +73,14 @@ resize();
 
 const clock = new Clock();
 const now = () => clock.now();
-enableGearDragging({ canvas: renderer.domElement, camera, view: level, simulation, now });
+enableGearDragging({
+  canvas: renderer.domElement,
+  camera,
+  view: level,
+  simulation,
+  now,
+  onRefusal: hud.setHint,
+});
 createPanel({
   simulation,
   clock,
@@ -86,7 +93,7 @@ createPanel({
 
 renderer.setAnimationLoop(() => {
   level.setAngles(simulation.anglesAt(now()));
-  updateHud(checkGoal(simulation.state, demoGoal));
+  hud.setStatus(checkGoal(simulation.state, demoGoal));
   labels.update(simulation.system, simulation.state);
   renderer.render(scene, camera);
   labelRenderer.render(scene, camera);
