@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { pitchRadius } from '../core/model';
-import { gearOutline, rootRadius, tipRadius, toothStep } from './gearOutline';
+import { pitchRadius, rootRadius, tipRadius } from '../core/model';
+import { gearOutline, toothStep } from './gearOutline';
 
 const radius = ({ x, y }: { x: number; y: number }) => Math.hypot(x, y);
 

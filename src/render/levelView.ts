@@ -1,6 +1,5 @@
 import * as THREE from 'three';
-import type { GearSystem } from '../core/model';
-import { tipRadius } from './gearOutline';
+import { tipRadius, type GearSystem } from '../core/model';
 import { GEAR_THICKNESS, gearGeometry, layerElevation } from './gearMesh';
 
 export interface Bounds {

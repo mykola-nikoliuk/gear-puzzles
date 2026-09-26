@@ -36,6 +36,22 @@ export function pitchRadius(teeth: number): number {
   return teeth / 2;
 }
 
+/**
+ * Standard module-1 proportions (1 above the pitch circle, 1.25 below) scaled to 75%:
+ * full-height teeth look too spiky at the sizes used on the board.
+ */
+const TOOTH_SCALE = 0.75;
+const ADDENDUM = 1 * TOOTH_SCALE;
+const DEDENDUM = 1.25 * TOOTH_SCALE;
+
+export function tipRadius(teeth: number): number {
+  return pitchRadius(teeth) + ADDENDUM;
+}
+
+export function rootRadius(teeth: number): number {
+  return pitchRadius(teeth) - DEDENDUM;
+}
+
 const EPSILON = 1e-9;
 
 /** Two gears mesh when they share a layer and their pitch circles touch. */

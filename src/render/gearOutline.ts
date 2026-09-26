@@ -1,29 +1,13 @@
-import { pitchRadius } from '../core/model';
+import { rootRadius, tipRadius } from '../core/model';
 
 export interface Point {
   readonly x: number;
   readonly y: number;
 }
 
-/**
- * Standard module-1 proportions (1 above the pitch circle, 1.25 below) scaled to 75%:
- * full-height teeth look too spiky at the sizes used on the board.
- */
-const TOOTH_SCALE = 0.75;
-const ADDENDUM = 1 * TOOTH_SCALE;
-const DEDENDUM = 1.25 * TOOTH_SCALE;
-
 /** Angular layout of one tooth as fractions of its pitch step, centred on the tooth axis. */
 const ROOT_HALF_WIDTH = 0.3;
 const TIP_HALF_WIDTH = 0.15;
-
-export function tipRadius(teeth: number): number {
-  return pitchRadius(teeth) + ADDENDUM;
-}
-
-export function rootRadius(teeth: number): number {
-  return pitchRadius(teeth) - DEDENDUM;
-}
 
 /** Angle between neighbouring teeth, in radians. */
 export function toothStep(teeth: number): number {
