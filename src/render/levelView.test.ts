@@ -30,6 +30,14 @@ describe('LevelView', () => {
     expect(fresh.bounds.minY).toBeLessThan(position?.y ?? 0);
   });
 
+  it('makes room on the board for the gears of a given layout', () => {
+    const start = moveGear(demoSolution, 'output-gear', null);
+    const tight = new LevelView(start);
+    const roomy = new LevelView(start, demoSolution);
+    expect(roomy.bounds.maxY).toBeGreaterThan(tight.bounds.maxY);
+    expect(roomy.bounds.maxY).toBe(levelBounds(demoSolution).maxY);
+  });
+
   it('places gears on their axle and layer', () => {
     const mesh = view.gearMesh('compound-small');
     expect(mesh?.position.toArray()).toEqual([18, 0, layerElevation(1)]);

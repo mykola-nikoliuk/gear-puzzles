@@ -90,9 +90,13 @@ export class LevelView {
   /** Board and tray together, for framing the camera. */
   readonly bounds: Bounds;
 
-  constructor(system: GearSystem) {
+  /**
+   * `reach` is a layout whose gears the board must have room for, usually the solution,
+   * so the finished train fits in the frame and clear of the tray.
+   */
+  constructor(system: GearSystem, reach: GearSystem = system) {
     this.axles = new Map(system.axles.map((axle) => [axle.id, axle]));
-    const board = levelBounds(system);
+    const board = mergeBounds(levelBounds(system), levelBounds(reach));
     this.tray = trayLayout(system, board);
     this.bounds = mergeBounds(board, this.tray.bounds);
     this.root.add(trayShelf(this.tray.bounds));

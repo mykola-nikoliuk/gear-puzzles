@@ -3,7 +3,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { checkGoal, type Goal } from './core/goal';
 import type { GearSystem } from './core/model';
-import { demoGoal, demoLevel } from './levels/demo';
+import { demoGoal, demoLevel, demoSolution } from './levels/demo';
 import { generateLevel } from './levels/generate';
 import { Clock } from './render/clock';
 import { enableGearDragging } from './render/dragGears';
@@ -53,7 +53,7 @@ interface Mounted extends ActiveLevel {
 
 /** Builds the scene objects, simulation and input for one level. */
 function mount(start: GearSystem, goal: Goal, solution?: GearSystem): Mounted {
-  const view = new LevelView(start);
+  const view = new LevelView(start, solution);
   view.markGoal(goal.axleId);
   const labelSet = new AxleLabels(start, view.pinTop);
   scene.add(view.root, labelSet.root);
@@ -85,7 +85,7 @@ function mount(start: GearSystem, goal: Goal, solution?: GearSystem): Mounted {
   };
 }
 
-let active = mount(demoLevel, demoGoal);
+let active = mount(demoLevel, demoGoal, demoSolution);
 
 /** Moves the camera back until the whole level fits, looking down at a slight tilt. */
 function resize() {
@@ -132,7 +132,7 @@ const panel = createPanel({
       hud.setHint(error instanceof Error ? error.message : String(error));
     }
   },
-  demo: () => load(demoLevel, demoGoal),
+  demo: () => load(demoLevel, demoGoal, demoSolution),
 });
 
 renderer.setAnimationLoop(() => {
