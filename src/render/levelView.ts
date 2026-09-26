@@ -9,7 +9,7 @@ import {
   type GearSystem,
 } from '../core/model';
 import { GEAR_THICKNESS, gearGeometry, layerElevation } from './gearMesh';
-import { arcPosition, followFactor, type Point3 } from './motion';
+import { carryLength, carryPosition, followFactor, type Point3 } from './motion';
 import { mergeBounds, trayLayout, type TrayLayout } from './tray';
 
 export interface Bounds {
@@ -49,11 +49,13 @@ export function layerColor(layer: number): string {
 }
 const HIGHLIGHTS = { valid: '#1f6f3a', invalid: '#7a1c1c' } as const;
 const GOAL_COLOR = '#2fd3c0';
-/** How far a dragged gear floats above its layer. */
-const LIFT = 0.8;
-/** A placed gear's hop from where it was to its new spot: how long and how high. */
-const MOVE_SECONDS = 0.45;
-const MOVE_LIFT = 2.5;
+/** Gears off the board, carried or in the tray, share one colour; layers colour the rest. */
+export const LOOSE_COLOR = '#5f86b3';
+/** A carried gear floats this far above the tallest pin. */
+const CARRY_CLEARANCE = 1;
+/** How fast a gear is carried to its new spot, in board units per second, and the time bounds. */
+const CARRY_SPEED = 60;
+const CARRY_SECONDS = { min: 0.2, max: 0.6 } as const;
 /** How fast a gear's colour follows the layer it is headed for, per second. */
 const COLOR_RATE = 8;
 
@@ -92,7 +94,10 @@ export class LevelView {
   /** Gears coloured by the layer they sit on; the motor gear keeps its own colour. */
   private readonly layered = new Set<string>();
   /** Gears on their way to a new spot; `start` is filled in on the first frame. */
-  private readonly motions = new Map<string, { from: Point3; to: Point3; start: number | null }>();
+  private readonly motions = new Map<
+    string,
+    { from: Point3; to: Point3; seconds: number; start: number | null }
+  >();
   private readonly targetColors = new Map<string, THREE.Color>();
   private lastUpdate: number | null = null;
   /** The first placement is instant; later ones animate. */
@@ -168,7 +173,7 @@ export class LevelView {
 
   /**
    * Sends every gear to its axle and layer (or tray slot): after the first call, gears that
-   * moved hop there and fade to their new layer's colour as `update` runs.
+   * moved are carried there (up, across, down) and fade to their new colour as `update` runs.
    */
   placeGears(system: GearSystem): void {
     const axles = new Map(system.axles.map((axle) => [axle.id, axle]));
@@ -185,7 +190,9 @@ export class LevelView {
         if (!axle) throw new Error(`Gear ${gear.id} sits on unknown axle ${gear.axleId}`);
         to = { x: axle.x, y: axle.y, z: layerElevation(gear.layer) };
       }
-      if (this.layered.has(gear.id)) this.setTargetColor(gear.id, layerColor(gear.layer));
+      if (this.layered.has(gear.id)) {
+        this.setTargetColor(gear.id, gear.axleId === null ? LOOSE_COLOR : layerColor(gear.layer));
+      }
       if (!to) continue;
 
       const { x, y, z } = mesh.position;
@@ -194,28 +201,39 @@ export class LevelView {
         const target = this.targetColors.get(gear.id);
         if (target) mesh.material.color.copy(target);
       } else if (x !== to.x || y !== to.y || z !== to.z) {
-        this.motions.set(gear.id, { from: { x, y, z }, to, start: null });
+        const from = { x, y, z };
+        const length = carryLength(from, to, this.carryHeight);
+        const seconds = Math.min(
+          CARRY_SECONDS.max,
+          Math.max(CARRY_SECONDS.min, length / CARRY_SPEED),
+        );
+        this.motions.set(gear.id, { from, to, seconds, start: null });
       }
     }
     this.settled = true;
   }
 
-  /** Moves a gear freely above the layer it would drop onto, fading to that layer's colour. */
-  hoverGear(id: string, x: number, y: number, layer: number): void {
-    this.motions.delete(id);
-    this.gears.get(id)?.position.set(x, y, layerElevation(layer) + LIFT);
-    if (this.layered.has(id)) this.setTargetColor(id, layerColor(layer));
+  /** Height of a carried gear's bottom face: clear of every pin. */
+  get carryHeight(): number {
+    return this.pinHeight + CARRY_CLEARANCE;
   }
 
-  /** Advances hops and colour fades; call once a frame with a steadily rising time. */
+  /** Carries a gear over the board at `carryHeight`, in the loose colour. */
+  hoverGear(id: string, x: number, y: number): void {
+    this.motions.delete(id);
+    this.gears.get(id)?.position.set(x, y, this.carryHeight);
+    if (this.layered.has(id)) this.setTargetColor(id, LOOSE_COLOR);
+  }
+
+  /** Advances carried gears and colour fades; call once a frame with a steadily rising time. */
   update(seconds: number): void {
     const elapsed = this.lastUpdate === null ? 0 : seconds - this.lastUpdate;
     this.lastUpdate = seconds;
 
     for (const [id, motion] of this.motions) {
       motion.start ??= seconds;
-      const progress = (seconds - motion.start) / MOVE_SECONDS;
-      const { x, y, z } = arcPosition(motion.from, motion.to, progress, MOVE_LIFT);
+      const progress = (seconds - motion.start) / motion.seconds;
+      const { x, y, z } = carryPosition(motion.from, motion.to, this.carryHeight, progress);
       this.gears.get(id)?.position.set(x, y, z);
       if (progress >= 1) this.motions.delete(id);
     }
@@ -226,7 +244,7 @@ export class LevelView {
     }
   }
 
-  /** Whether any gear is still hopping to its spot. */
+  /** Whether any gear is still on its way to its spot. */
   get moving(): boolean {
     return this.motions.size > 0;
   }

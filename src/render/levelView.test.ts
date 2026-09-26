@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { moveGear } from '../core/placement';
 import { demoSolution } from '../levels/demo';
 import { GEAR_THICKNESS, layerElevation } from './gearMesh';
-import { LevelView, layerColor, levelBounds } from './levelView';
+import { LevelView, LOOSE_COLOR, layerColor, levelBounds } from './levelView';
 
 describe('levelBounds', () => {
   it('covers the tips of every gear and the room around empty axles', () => {
@@ -93,14 +93,14 @@ describe('LevelView', () => {
     expect(view.gearAt(down)).toBeUndefined();
   });
 
-  it('hops a moved gear over to its new spot', () => {
+  it('carries a moved gear over to its new spot', () => {
     const fresh = new LevelView(demoSolution);
     fresh.placeGears(moveGear(demoSolution, 'idler-gear', 'spare-south'));
     expect(fresh.moving).toBe(true);
     fresh.update(0);
     fresh.update(0.2);
     const position = fresh.gearMesh('idler-gear')?.position;
-    expect(position?.z).toBeGreaterThan(0);
+    expect(position?.z).toBe(fresh.carryHeight);
     expect(position?.x).not.toBe(-6);
     fresh.update(10);
     expect(fresh.moving).toBe(false);
@@ -118,14 +118,32 @@ describe('LevelView', () => {
     expect(color).not.toBe(layerColor(1));
   });
 
-  it('lifts a dragged gear and puts it back on its axle', () => {
+  it('carries a dragged gear clear of every pin, in the loose colour', () => {
     const fresh = new LevelView(demoSolution);
-    fresh.hoverGear('idler-gear', 3, 4, 0);
-    expect(fresh.gearMesh('idler-gear')?.position.z).toBeGreaterThan(0);
-
-    fresh.placeGears(moveGear(demoSolution, 'idler-gear', 'spare-south'));
+    fresh.hoverGear('idler-gear', 3, 4);
     settle(fresh);
-    expect(fresh.gearMesh('idler-gear')?.position.toArray()).toEqual([0, -10, 0]);
+    const mesh = fresh.gearMesh('idler-gear');
+    expect(mesh?.position.toArray()).toEqual([3, 4, fresh.carryHeight]);
+    expect(fresh.carryHeight).toBeGreaterThan(fresh.pinTop);
+    expect(`#${mesh?.material.color.getHexString()}`).toBe(LOOSE_COLOR);
+  });
+
+  it('drops a released gear straight down onto its axle', () => {
+    const fresh = new LevelView(demoSolution);
+    fresh.hoverGear('idler-gear', 0, -10);
+    fresh.placeGears(moveGear(demoSolution, 'idler-gear', 'spare-south'));
+    fresh.update(0);
+    fresh.update(0.1);
+    const position = fresh.gearMesh('idler-gear')?.position;
+    expect([position?.x, position?.y]).toEqual([0, -10]);
+    expect(position?.z).toBeLessThan(fresh.carryHeight);
+    settle(fresh);
+    expect(position?.toArray()).toEqual([0, -10, 0]);
+  });
+
+  it('shows gears in the tray in the loose colour', () => {
+    const fresh = new LevelView(moveGear(demoSolution, 'compound-small', null));
+    expect(`#${fresh.gearMesh('compound-small')?.material.color.getHexString()}`).toBe(LOOSE_COLOR);
   });
 
   it('highlights and clears a gear', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arcPosition, easeInOut, followFactor } from './motion';
+import { carryLength, carryPosition, easeInOut, followFactor } from './motion';
 
 describe('easeInOut', () => {
   it('runs from 0 to 1 and clamps outside', () => {
@@ -11,19 +11,35 @@ describe('easeInOut', () => {
   });
 });
 
-describe('arcPosition', () => {
+describe('carryPosition', () => {
   const from = { x: 0, y: 0, z: 0 };
-  const to = { x: 10, y: 4, z: 2 };
+  const to = { x: 10, y: 0, z: 2 };
+  const carry = 5;
 
   it('starts and ends at the given points', () => {
-    expect(arcPosition(from, to, 0, 3)).toEqual(from);
-    expect(arcPosition(from, to, 1, 3)).toEqual(to);
+    expect(carryPosition(from, to, carry, 0)).toEqual(from);
+    expect(carryPosition(from, to, carry, 1)).toEqual(to);
   });
 
-  it('lifts the gear halfway through', () => {
-    const middle = arcPosition(from, to, 0.5, 3);
-    expect(middle.x).toBe(5);
-    expect(middle.z).toBe(1 + 3);
+  it('rises straight up, crosses at the carry height and drops straight down', () => {
+    // Path: 5 up, 10 across, 3 down; halfway along the 18 units is 4 units across.
+    expect(carryPosition(from, to, carry, 0.5)).toEqual({ x: 4, y: 0, z: 5 });
+    const early = carryPosition(from, to, carry, 0.1);
+    expect([early.x, early.y]).toEqual([0, 0]);
+    const late = carryPosition(from, to, carry, 0.95);
+    expect([late.x, late.y]).toEqual([10, 0]);
+  });
+
+  it('just falls when released above its spot', () => {
+    const above = { x: 10, y: 0, z: 5 };
+    const falling = carryPosition(above, to, carry, 0.5);
+    expect([falling.x, falling.y]).toEqual([10, 0]);
+    expect(falling.z).toBeLessThan(5);
+    expect(falling.z).toBeGreaterThan(2);
+  });
+
+  it('measures the whole path', () => {
+    expect(carryLength(from, to, carry)).toBe(18);
   });
 });
 

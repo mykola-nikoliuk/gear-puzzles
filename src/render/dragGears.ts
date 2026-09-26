@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Gear, GearSystem } from '../core/model';
 import { bestLayer, moveGear, nearestAxle, swapGears } from '../core/placement';
-import { GEAR_THICKNESS, layerElevation } from './gearMesh';
+import { GEAR_THICKNESS } from './gearMesh';
 import { refusalText } from '../ui/hud';
 import type { LevelView } from './levelView';
 import type { Simulation } from './simulation';
@@ -60,11 +60,9 @@ export function enableGearDragging({
     return gears.find((gear) => gear.id === id && gear.axleId !== driver.axleId);
   };
 
-  const pointOnLayer = (layer: number): THREE.Vector3 | null => {
-    const plane = new THREE.Plane(
-      new THREE.Vector3(0, 0, 1),
-      -(layerElevation(layer) + GEAR_THICKNESS),
-    );
+  /** Where the pointer meets the plane the carried gear's top face moves in. */
+  const pointOnCarryPlane = (): THREE.Vector3 | null => {
+    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -(view.carryHeight + GEAR_THICKNESS));
     return raycaster.ray.intersectPlane(plane, new THREE.Vector3());
   };
 
@@ -83,9 +81,6 @@ export function enableGearDragging({
         : swapGears(layout, gear.id, axle.id);
     return { axle, next };
   };
-
-  const layerIn = (layout: GearSystem | null, id: string) =>
-    layout?.gears.find((gear) => gear.id === id)?.layer;
 
   const onPointerDown = (event: PointerEvent) => {
     const gear = draggableGearAt(event);
@@ -109,11 +104,10 @@ export function enableGearDragging({
     }
 
     aim(event);
-    const point = pointOnLayer(drag.gear.layer);
+    const point = pointOnCarryPlane();
     if (!point) return;
     const { axle, next } = target(point, drag);
-    const layer = axle ? layerIn(next, drag.gear.id) : undefined;
-    view.hoverGear(drag.gear.id, point.x, point.y, layer ?? drag.gear.layer);
+    view.hoverGear(drag.gear.id, point.x, point.y);
     view.highlight(drag.gear.id, axle ? (next ? 'valid' : 'invalid') : null);
     onRefusal(axle && !next ? refusalText(drag.layout, drag.gear.id, axle.id) : null);
   };
@@ -122,7 +116,7 @@ export function enableGearDragging({
     if (!drag) return;
 
     aim(event);
-    const point = pointOnLayer(drag.gear.layer);
+    const point = pointOnCarryPlane();
     // A refused drop sends the gear back where it came from.
     const layout = (point && target(point, drag).next) ?? drag.layout;
 
