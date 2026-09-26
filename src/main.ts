@@ -1,14 +1,17 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
+import { encodeLoop, loopFrames } from './dev/loopGif';
+import { toNumber } from './core/fraction';
 import { checkGoal, type Goal } from './core/goal';
 import type { GearSystem } from './core/model';
 import { demoGoal, demoLevel, demoSolution } from './levels/demo';
 import { generateLevel } from './levels/generate';
+import { loopPeriod } from './render/animate';
 import { Clock } from './render/clock';
 import { enableGearDragging } from './render/dragGears';
 import { focusPoint, halfExtents } from './render/framing';
-import { LevelView } from './render/levelView';
+import { LevelView, levelBounds, type Bounds } from './render/levelView';
 import { Simulation } from './render/simulation';
 import { createHud } from './ui/hud';
 import { AxleLabels } from './ui/labels';
@@ -92,15 +95,14 @@ function mount(start: GearSystem, goal: Goal, solution?: GearSystem): Mounted {
 
 let active = mount(demoLevel, demoGoal, demoSolution);
 
-/** Moves the camera back until the whole level fits, looking down at a slight tilt. */
-function resize() {
-  const { clientWidth: width, clientHeight: height } = container;
+/** Moves the camera back until `bounds` fits a width × height view, looking down at a slight tilt. */
+function frameCamera(bounds: Bounds, width: number, height: number) {
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
 
   const focus = focusPoint(active.start, active.goal.axleId);
   const center = new THREE.Vector3(focus.x, focus.y);
-  const half = halfExtents(active.view.bounds, focus);
+  const half = halfExtents(bounds, focus);
   const halfHeight = half.height;
   const halfWidth = half.width / camera.aspect;
   const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
@@ -108,6 +110,12 @@ function resize() {
 
   camera.position.set(center.x, center.y - distance * tilt.value, distance);
   camera.lookAt(center);
+}
+
+/** Fits the whole level, tray included, into the window. */
+function resize() {
+  const { clientWidth: width, clientHeight: height } = container;
+  frameCamera(active.view.bounds, width, height);
   renderer.setSize(width, height);
   labelRenderer.setSize(width, height);
 }
@@ -138,11 +146,56 @@ const panel = createPanel({
   demo: () => load(demoLevel, demoGoal, demoSolution),
 });
 
-renderer.setAnimationLoop(() => {
+function frame() {
   active.view.update(performance.now() / 1000);
   active.view.setAngles(active.simulation.anglesAt(now()));
   hud.setStatus(checkGoal(active.simulation.state, active.goal));
   active.labelSet.update(active.simulation.system, active.simulation.state);
   renderer.render(scene, camera);
   labelRenderer.render(scene, camera);
-});
+}
+renderer.setAnimationLoop(frame);
+
+/**
+ * Dev only: renders one seamless loop of the board as it turns now, framed on the board
+ * without the tray, and downloads it as a GIF. Run `captureLoop()` in the console.
+ */
+function captureLoop({ fps = 25, width = 720, height = 480 } = {}) {
+  const { simulation, view } = active;
+  const period = loopPeriod(simulation.system, simulation.state);
+  if (!period) throw new Error('Nothing turns, so there is no loop to capture');
+  const { times, delay } = loopFrames(toNumber(period), fps);
+
+  renderer.setAnimationLoop(null);
+  const pixelRatio = renderer.getPixelRatio();
+  renderer.setPixelRatio(1);
+  renderer.setSize(width, height);
+  frameCamera(levelBounds(simulation.system), width, height);
+
+  const context = Object.assign(document.createElement('canvas'), { width, height }).getContext(
+    '2d',
+    { willReadFrequently: true },
+  );
+  if (!context) throw new Error('No 2D canvas to read frames from');
+  const start = now();
+  const frames = times.map((time) => {
+    view.setAngles(simulation.anglesAt(start + time));
+    renderer.render(scene, camera);
+    context.drawImage(renderer.domElement, 0, 0);
+    return context.getImageData(0, 0, width, height);
+  });
+
+  renderer.setPixelRatio(pixelRatio);
+  resize();
+  renderer.setAnimationLoop(frame);
+
+  const gif = encodeLoop(frames, delay);
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(new Blob([gif], { type: 'image/gif' }));
+  link.download = 'gear-puzzles.gif';
+  link.click();
+  URL.revokeObjectURL(link.href);
+  return { seconds: toNumber(period), frames: frames.length, bytes: gif.length };
+}
+
+if (import.meta.env.DEV) Object.assign(window, { captureLoop });
