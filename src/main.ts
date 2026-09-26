@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { demoLevel } from './levels/demo';
+import { propagate } from './core/propagate';
+import { anglesAt } from './render/animate';
 import { initialAngles } from './render/phase';
 import { LevelView, levelBounds } from './render/levelView';
 
@@ -27,7 +29,8 @@ sun.position.set(-20, -30, 60);
 scene.add(sun);
 
 const level = new LevelView(demoLevel);
-level.setAngles(initialAngles(demoLevel));
+const propagation = propagate(demoLevel);
+const startAngles = initialAngles(demoLevel);
 scene.add(level.root);
 
 const bounds = levelBounds(demoLevel);
@@ -55,4 +58,7 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-renderer.setAnimationLoop(() => renderer.render(scene, camera));
+renderer.setAnimationLoop((time) => {
+  level.setAngles(anglesAt(demoLevel, propagation, startAngles, time / 1000));
+  renderer.render(scene, camera);
+});
