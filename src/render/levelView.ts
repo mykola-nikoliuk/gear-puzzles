@@ -9,6 +9,7 @@ import {
   type GearSystem,
 } from '../core/model';
 import { GEAR_THICKNESS, gearGeometry, layerElevation } from './gearMesh';
+import { arcPosition, followFactor, type Point3 } from './motion';
 import { mergeBounds, trayLayout, type TrayLayout } from './tray';
 
 export interface Bounds {
@@ -50,6 +51,11 @@ const HIGHLIGHTS = { valid: '#1f6f3a', invalid: '#7a1c1c' } as const;
 const GOAL_COLOR = '#2fd3c0';
 /** How far a dragged gear floats above its layer. */
 const LIFT = 0.8;
+/** A placed gear's hop from where it was to its new spot: how long and how high. */
+const MOVE_SECONDS = 0.45;
+const MOVE_LIFT = 2.5;
+/** How fast a gear's colour follows the layer it is headed for, per second. */
+const COLOR_RATE = 8;
 
 export type Highlight = keyof typeof HIGHLIGHTS | null;
 
@@ -85,6 +91,12 @@ export class LevelView {
   private readonly pins = new Map<string, THREE.Mesh>();
   /** Gears coloured by the layer they sit on; the motor gear keeps its own colour. */
   private readonly layered = new Set<string>();
+  /** Gears on their way to a new spot; `start` is filled in on the first frame. */
+  private readonly motions = new Map<string, { from: Point3; to: Point3; start: number | null }>();
+  private readonly targetColors = new Map<string, THREE.Color>();
+  private lastUpdate: number | null = null;
+  /** The first placement is instant; later ones animate. */
+  private settled = false;
   private readonly pinHeight: number;
   private readonly tray: TrayLayout;
   /** Board and tray together, for framing the camera. */
@@ -154,30 +166,75 @@ export class LevelView {
     return ring;
   }
 
-  /** Puts every gear back on its axle and layer, coloured by that layer. */
+  /**
+   * Sends every gear to its axle and layer (or tray slot): after the first call, gears that
+   * moved hop there and fade to their new layer's colour as `update` runs.
+   */
   placeGears(system: GearSystem): void {
     const axles = new Map(system.axles.map((axle) => [axle.id, axle]));
     for (const gear of system.gears) {
       const mesh = this.gears.get(gear.id);
       if (!mesh) continue;
-      if (this.layered.has(gear.id)) mesh.material.color.set(layerColor(gear.layer));
+
+      let to: Point3 | undefined;
       if (gear.axleId === null) {
         const slot = this.tray.slots.get(gear.id);
-        if (slot) mesh.position.set(slot.x, slot.y, 0);
-        continue;
+        if (slot) to = { x: slot.x, y: slot.y, z: 0 };
+      } else {
+        const axle = axles.get(gear.axleId);
+        if (!axle) throw new Error(`Gear ${gear.id} sits on unknown axle ${gear.axleId}`);
+        to = { x: axle.x, y: axle.y, z: layerElevation(gear.layer) };
       }
+      if (this.layered.has(gear.id)) this.setTargetColor(gear.id, layerColor(gear.layer));
+      if (!to) continue;
 
-      const axle = axles.get(gear.axleId);
-      if (!axle) throw new Error(`Gear ${gear.id} sits on unknown axle ${gear.axleId}`);
-      mesh.position.set(axle.x, axle.y, layerElevation(gear.layer));
+      const { x, y, z } = mesh.position;
+      if (!this.settled) {
+        mesh.position.set(to.x, to.y, to.z);
+        const target = this.targetColors.get(gear.id);
+        if (target) mesh.material.color.copy(target);
+      } else if (x !== to.x || y !== to.y || z !== to.z) {
+        this.motions.set(gear.id, { from: { x, y, z }, to, start: null });
+      }
+    }
+    this.settled = true;
+  }
+
+  /** Moves a gear freely above the layer it would drop onto, fading to that layer's colour. */
+  hoverGear(id: string, x: number, y: number, layer: number): void {
+    this.motions.delete(id);
+    this.gears.get(id)?.position.set(x, y, layerElevation(layer) + LIFT);
+    if (this.layered.has(id)) this.setTargetColor(id, layerColor(layer));
+  }
+
+  /** Advances hops and colour fades; call once a frame with a steadily rising time. */
+  update(seconds: number): void {
+    const elapsed = this.lastUpdate === null ? 0 : seconds - this.lastUpdate;
+    this.lastUpdate = seconds;
+
+    for (const [id, motion] of this.motions) {
+      motion.start ??= seconds;
+      const progress = (seconds - motion.start) / MOVE_SECONDS;
+      const { x, y, z } = arcPosition(motion.from, motion.to, progress, MOVE_LIFT);
+      this.gears.get(id)?.position.set(x, y, z);
+      if (progress >= 1) this.motions.delete(id);
+    }
+
+    const blend = followFactor(COLOR_RATE, elapsed);
+    for (const [id, target] of this.targetColors) {
+      this.gears.get(id)?.material.color.lerp(target, blend);
     }
   }
 
-  /** Moves a gear freely above the layer it would drop onto, in that layer's colour. */
-  hoverGear(id: string, x: number, y: number, layer: number): void {
-    const mesh = this.gears.get(id);
-    mesh?.position.set(x, y, layerElevation(layer) + LIFT);
-    if (this.layered.has(id)) mesh?.material.color.set(layerColor(layer));
+  /** Whether any gear is still hopping to its spot. */
+  get moving(): boolean {
+    return this.motions.size > 0;
+  }
+
+  private setTargetColor(id: string, color: string): void {
+    const target = this.targetColors.get(id);
+    if (target) target.set(color);
+    else this.targetColors.set(id, new THREE.Color(color));
   }
 
   /** Visual only: stretches every gear along its axle without moving the layers. */

@@ -139,6 +139,7 @@ const panel = createPanel({
 });
 
 renderer.setAnimationLoop(() => {
+  active.view.update(performance.now() / 1000);
   active.view.setAngles(active.simulation.anglesAt(now()));
   hud.setStatus(checkGoal(active.simulation.state, active.goal));
   active.labelSet.update(active.simulation.system, active.simulation.state);

@@ -12,6 +12,12 @@ describe('levelBounds', () => {
   });
 });
 
+/** Lets every hop and colour fade run to the end. */
+function settle(view: LevelView) {
+  view.update(0);
+  view.update(10);
+}
+
 describe('LevelView', () => {
   const view = new LevelView(demoSolution);
 
@@ -24,6 +30,7 @@ describe('LevelView', () => {
   it('rests gears from the tray on the shelf below the board', () => {
     const fresh = new LevelView(demoSolution);
     fresh.placeGears(moveGear(demoSolution, 'compound-small', null));
+    settle(fresh);
     const position = fresh.gearMesh('compound-small')?.position;
     expect(position?.z).toBe(0);
     expect(position?.y).toBeLessThan(levelBounds(demoSolution).minY);
@@ -48,6 +55,7 @@ describe('LevelView', () => {
     const color = (id: string) => `#${fresh.gearMesh(id)?.material.color.getHexString()}`;
     expect(color('compound-small')).toBe(layerColor(1));
     fresh.placeGears(moveGear(demoSolution, 'compound-small', 'spare-west', 0));
+    settle(fresh);
     expect(color('compound-small')).toBe(layerColor(0));
     expect(color('motor-gear')).not.toBe(layerColor(0));
   });
@@ -85,12 +93,38 @@ describe('LevelView', () => {
     expect(view.gearAt(down)).toBeUndefined();
   });
 
+  it('hops a moved gear over to its new spot', () => {
+    const fresh = new LevelView(demoSolution);
+    fresh.placeGears(moveGear(demoSolution, 'idler-gear', 'spare-south'));
+    expect(fresh.moving).toBe(true);
+    fresh.update(0);
+    fresh.update(0.2);
+    const position = fresh.gearMesh('idler-gear')?.position;
+    expect(position?.z).toBeGreaterThan(0);
+    expect(position?.x).not.toBe(-6);
+    fresh.update(10);
+    expect(fresh.moving).toBe(false);
+    expect(position?.toArray()).toEqual([0, -10, 0]);
+  });
+
+  it('fades to the new colour instead of switching at once', () => {
+    const fresh = new LevelView(demoSolution);
+    const mesh = fresh.gearMesh('compound-small');
+    fresh.placeGears(moveGear(demoSolution, 'compound-small', 'spare-west', 0));
+    fresh.update(0);
+    fresh.update(0.05);
+    const color = `#${mesh?.material.color.getHexString()}`;
+    expect(color).not.toBe(layerColor(0));
+    expect(color).not.toBe(layerColor(1));
+  });
+
   it('lifts a dragged gear and puts it back on its axle', () => {
     const fresh = new LevelView(demoSolution);
     fresh.hoverGear('idler-gear', 3, 4, 0);
     expect(fresh.gearMesh('idler-gear')?.position.z).toBeGreaterThan(0);
 
     fresh.placeGears(moveGear(demoSolution, 'idler-gear', 'spare-south'));
+    settle(fresh);
     expect(fresh.gearMesh('idler-gear')?.position.toArray()).toEqual([0, -10, 0]);
   });
 
