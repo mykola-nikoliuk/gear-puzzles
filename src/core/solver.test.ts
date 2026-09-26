@@ -5,7 +5,7 @@ import { checkGoal, type Goal } from './goal';
 import type { GearSystem } from './model';
 import { propagate } from './propagate';
 import { moveGear } from './placement';
-import { movesTo, solve } from './solver';
+import { bottomUp, movesTo, solve, type Move } from './solver';
 
 describe('solve', () => {
   // The output axle `b` needs the 10-tooth gear, but a 6-tooth gear sits there first.
@@ -110,5 +110,42 @@ describe('movesTo', () => {
 
   it('has nothing to do when the layouts match', () => {
     expect(movesTo(demoSolution, demoSolution)).toEqual([]);
+  });
+});
+
+describe('bottomUp', () => {
+  const apply = (start: GearSystem, moves: readonly Move[]) =>
+    moves.reduce((system, move) => moveGear(system, move.gearId, move.axleId, move.layer), start);
+  const empty = moveGear(demoLevel, 'compound-big', null);
+  const topFirst: Move[] = [
+    { gearId: 'compound-small', axleId: 'compound', layer: 1 },
+    { gearId: 'compound-big', axleId: 'compound', layer: 0 },
+  ];
+
+  it('places the bottom layer before the one above it', () => {
+    expect(bottomUp(empty, topFirst).map(({ gearId }) => gearId)).toEqual([
+      'compound-big',
+      'compound-small',
+    ]);
+  });
+
+  it('takes gears off before putting any on', () => {
+    const moves: Move[] = [
+      { gearId: 'compound-small', axleId: 'compound', layer: 1 },
+      { gearId: 'idler-gear', axleId: null, layer: 0 },
+    ];
+    expect(bottomUp(demoLevel, moves)[0]?.gearId).toBe('idler-gear');
+  });
+
+  it('keeps the moves of one gear in order', () => {
+    const moves: Move[] = [
+      { gearId: 'compound-small', axleId: 'spare-west', layer: 1 },
+      { gearId: 'compound-small', axleId: 'compound', layer: 1 },
+    ];
+    expect(bottomUp(demoLevel, moves)).toEqual(moves);
+  });
+
+  it('ends in the same layout', () => {
+    expect(apply(empty, bottomUp(empty, topFirst))).toEqual(apply(empty, topFirst));
   });
 });

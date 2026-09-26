@@ -4,7 +4,7 @@ import { fraction, negate, type Fraction } from '../core/fraction';
 import type { Goal } from '../core/goal';
 import type { GearSystem } from '../core/model';
 import { moveGear, placementError } from '../core/placement';
-import { movesTo, solve, type Move, type Solution } from '../core/solver';
+import { bottomUp, movesTo, solve, type Move, type Solution } from '../core/solver';
 import type { LevelOptions } from '../levels/generate';
 import type { Clock } from '../render/clock';
 import type { LevelView } from '../render/levelView';
@@ -95,7 +95,7 @@ export function createPanel({ clock, level, tilt, generate, demo }: Options): Pa
         solve(system, goal, { maxStates: SOLVE_BUDGET }) ??
         (known ? { moves: movesTo(system, known), system: known } : null);
       solveButton.name(solveLabel(solution));
-      if (solution) replay(solution.moves);
+      if (solution) replay(bottomUp(system, solution.moves));
     },
   };
 

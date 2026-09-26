@@ -109,3 +109,36 @@ export function movesTo(from: GearSystem, to: GearSystem): Move[] {
     .map((gear) => ({ gearId: gear.id, axleId: gear.axleId, layer: gear.layer }));
   return [...lift, ...place];
 }
+
+/**
+ * The same moves in the order a person would make them: gears come off first, then go on
+ * from the bottom layer up, so no gear has to pass through one placed above it. A gear's own
+ * moves keep their order, and a move waits until it is allowed; the end layout is unchanged.
+ */
+export function bottomUp(start: GearSystem, moves: readonly Move[]): Move[] {
+  const rank = (move: Move) => (move.axleId === null ? -1 : move.layer);
+  const remaining = moves.map((move, index) => ({ move, index }));
+  const ordered: Move[] = [];
+  let system = start;
+
+  while (remaining.length > 0) {
+    // Only a gear's earliest remaining move may go next.
+    const seen = new Set<string>();
+    const ready = remaining.filter(({ move }) => {
+      if (seen.has(move.gearId)) return false;
+      seen.add(move.gearId);
+      return true;
+    });
+    const allowed = ready.filter(
+      ({ move }) => placementError(system, move.gearId, move.axleId, move.layer) === null,
+    );
+    const [next] = (allowed.length > 0 ? allowed : ready).sort(
+      (a, b) => rank(a.move) - rank(b.move) || a.index - b.index,
+    );
+    if (!next) break;
+    remaining.splice(remaining.indexOf(next), 1);
+    ordered.push(next.move);
+    system = moveGear(system, next.move.gearId, next.move.axleId, next.move.layer);
+  }
+  return ordered;
+}
