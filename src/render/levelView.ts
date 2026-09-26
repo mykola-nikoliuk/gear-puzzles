@@ -110,6 +110,11 @@ export class LevelView {
     this.gears.get(id)?.position.set(x, y, layerElevation(layer) + LIFT);
   }
 
+  /** Visual only: stretches every gear along its axle without moving the layers. */
+  setThickness(scale: number): void {
+    for (const mesh of this.gears.values()) mesh.scale.z = scale;
+  }
+
   highlight(id: string, highlight: Highlight): void {
     this.gears.get(id)?.material.emissive.set(highlight ? HIGHLIGHTS[highlight] : '#000000');
   }

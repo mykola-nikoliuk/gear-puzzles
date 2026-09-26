@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { checkGoal } from './core/goal';
-import { demoGoal, demoLevel } from './levels/demo';
+import { demoGoal, demoLevel, demoSolution } from './levels/demo';
+import { Clock } from './render/clock';
 import { enableGearDragging } from './render/dragGears';
 import { LevelView, levelBounds } from './render/levelView';
 import { Simulation } from './render/simulation';
 import { createHud } from './ui/hud';
+import { createPanel } from './ui/panel';
 
 function getContainer(): HTMLElement {
   const element = document.getElementById('app');
@@ -38,7 +40,7 @@ const updateHud = createHud(container, demoGoal);
 const bounds = levelBounds(demoLevel);
 const center = new THREE.Vector3((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);
 const camera = new THREE.PerspectiveCamera(35);
-const TILT = 0.6;
+const tilt = { value: 0.6, onChange: () => resize() };
 const MARGIN = 1.15;
 
 /** Moves the camera back until the whole level fits, looking down at a slight tilt. */
@@ -52,7 +54,7 @@ function resize() {
   const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   const distance = (Math.max(halfHeight, halfWidth) * MARGIN) / tanHalfFov;
 
-  camera.position.set(center.x, center.y - distance * TILT, distance);
+  camera.position.set(center.x, center.y - distance * tilt.value, distance);
   camera.lookAt(center);
   renderer.setSize(width, height);
 }
@@ -60,8 +62,16 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-const now = () => performance.now() / 1000;
+const clock = new Clock();
+const now = () => clock.now();
 enableGearDragging({ canvas: renderer.domElement, camera, view: level, simulation, now });
+createPanel({
+  simulation,
+  clock,
+  view: level,
+  layouts: { start: demoLevel, solution: demoSolution },
+  tilt,
+});
 
 renderer.setAnimationLoop(() => {
   level.setAngles(simulation.anglesAt(now()));

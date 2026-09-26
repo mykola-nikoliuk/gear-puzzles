@@ -67,4 +67,11 @@ describe('LevelView', () => {
     expect(fresh.root.children).toContain(ring);
     expect(() => fresh.markGoal('nope')).toThrow(/unknown axle/);
   });
+
+  it('scales gear thickness without moving layers', () => {
+    const fresh = new LevelView(demoSolution);
+    fresh.setThickness(0.5);
+    expect(fresh.gearMesh('compound-small')?.scale.z).toBe(0.5);
+    expect(fresh.gearMesh('compound-small')?.position.z).toBe(layerElevation(1));
+  });
 });
