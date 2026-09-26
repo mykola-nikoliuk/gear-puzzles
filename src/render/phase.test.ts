@@ -50,4 +50,32 @@ describe('initialAngles', () => {
     expect(toothPhase(angles.get('g2') ?? NaN, 12, Math.PI)).toBeCloseTo(0.5);
     expect(angles.get('g3')).toBe(0);
   });
+
+  it('keeps the current angles of the motor group and of loose gears', () => {
+    const angles = initialAngles(
+      system,
+      new Map([
+        ['g1', 1.2],
+        ['g3', 0.4],
+      ]),
+    );
+    expect(angles.get('g1')).toBe(1.2);
+    expect(angles.get('g3')).toBe(0.4);
+    expect(toothPhase(angles.get('g2') ?? NaN, 12, Math.PI)).toBeCloseTo(
+      0.5 - toothPhase(1.2, 8, 0),
+    );
+  });
+
+  it('aligns a gear to the motor even when it is listed first', () => {
+    const reordered: GearSystem = { ...system, gears: [...gears].reverse() };
+    const angles = initialAngles(
+      reordered,
+      new Map([
+        ['g1', 1.2],
+        ['g2', 3],
+      ]),
+    );
+    expect(angles.get('g1')).toBe(1.2);
+    expect(angles.get('g2')).not.toBe(3);
+  });
 });

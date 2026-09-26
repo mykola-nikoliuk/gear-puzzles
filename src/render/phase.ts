@@ -15,9 +15,14 @@ export function meshedAngle(angleA: number, teethA: number, teethB: number, cont
 
 /**
  * Starting angles for every gear, spread from gear to gear across meshes.
- * Each connected group starts from its first gear at angle 0.
+ * Each connected group keeps the `current` angle of its first gear (or 0) and aligns the rest.
+ * The motor's group goes first, so after the system changes the driven gears stay put and
+ * newly connected gears snap into their teeth.
  */
-export function initialAngles(system: GearSystem): Map<string, number> {
+export function initialAngles(
+  system: GearSystem,
+  current: ReadonlyMap<string, number> = new Map(),
+): Map<string, number> {
   const axles = new Map(system.axles.map((axle) => [axle.id, axle]));
   const neighbours = new Map<string, Gear[]>(system.gears.map((gear) => [gear.id, []]));
   for (const [a, b] of findMeshes(system)) {
@@ -36,10 +41,13 @@ export function initialAngles(system: GearSystem): Map<string, number> {
     return Math.atan2(target.y - origin.y, target.x - origin.x);
   };
 
+  const onMotor = (gear: Gear) => gear.axleId === system.driver.axleId;
+  const seeds = [...system.gears.filter(onMotor), ...system.gears.filter((g) => !onMotor(g))];
+
   const angles = new Map<string, number>();
-  for (const start of system.gears) {
+  for (const start of seeds) {
     if (angles.has(start.id)) continue;
-    angles.set(start.id, 0);
+    angles.set(start.id, current.get(start.id) ?? 0);
     const queue = [start];
 
     for (let gear = queue.shift(); gear !== undefined; gear = queue.shift()) {
