@@ -64,12 +64,19 @@ export function rootRadius(teeth: number): number {
 
 const EPSILON = 1e-9;
 
-/** Two gears mesh when they share a layer and their pitch circles touch. */
+/**
+ * How much farther apart than the pitch circles two gears may sit and still mesh, as real
+ * gears do with a little backlash. Closer than the pitch circles, the teeth jam.
+ */
+export const BACKLASH = 0.5;
+
+/** Two gears mesh when they share a layer and their pitch circles touch, give or take backlash. */
 export function meshes(a: Gear, b: Gear, axleA: Axle, axleB: Axle): boolean {
   if (a.layer !== b.layer || a.axleId === b.axleId) return false;
 
   const distance = Math.hypot(axleA.x - axleB.x, axleA.y - axleB.y);
-  return Math.abs(distance - pitchRadius(a.teeth) - pitchRadius(b.teeth)) < EPSILON;
+  const gap = distance - pitchRadius(a.teeth) - pitchRadius(b.teeth);
+  return gap > -EPSILON && gap <= BACKLASH + EPSILON;
 }
 
 export type Mesh = readonly [PlacedGear, PlacedGear];

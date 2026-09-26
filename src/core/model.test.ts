@@ -29,6 +29,14 @@ describe('meshes', () => {
     expect(meshes(gear('g1', 'a', 8), gear('g2', 'd', 12), a, diagonal)).toBe(true);
   });
 
+  it('meshes with a little backlash', () => {
+    expect(meshes(gear('g1', 'a', 8), gear('g2', 'b', 11), a, b)).toBe(true);
+  });
+
+  it('does not mesh when pushed closer than the pitch circles', () => {
+    expect(meshes(gear('g1', 'a', 8), gear('g2', 'b', 13), a, b)).toBe(false);
+  });
+
   it('does not mesh when too far apart', () => {
     expect(meshes(gear('g1', 'a', 8), gear('g2', 'b', 10), a, b)).toBe(false);
   });
