@@ -8,7 +8,7 @@ export interface Fraction {
   readonly den: number;
 }
 
-function gcd(a: number, b: number): number {
+export function gcd(a: number, b: number): number {
   let x = Math.abs(a);
   let y = Math.abs(b);
   while (y !== 0) {
