@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { moveGear } from '../core/placement';
-import { demoSolution } from '../levels/demo';
+import { demoLevel, demoSolution } from '../levels/demo';
 import { GEAR_THICKNESS, layerElevation } from './gearMesh';
 import { gearOutline } from './gearOutline';
 import { LevelView, LOOSE_COLOR, layerColor, levelBounds } from './levelView';
@@ -189,6 +189,15 @@ describe('LevelView', () => {
     expect(ring.position.z).toBeGreaterThan(layerElevation(1) + GEAR_THICKNESS);
     expect(fresh.root.children).toContain(ring);
     expect(() => fresh.markGoal('nope')).toThrow(/unknown axle/);
+  });
+
+  it('hides the tray shelf on request', () => {
+    const fresh = new LevelView(demoLevel);
+    const shelf = () => fresh.root.children.find((child) => child instanceof THREE.Mesh);
+    fresh.setTrayVisible(false);
+    expect(shelf()?.visible).toBe(false);
+    fresh.setTrayVisible(true);
+    expect(shelf()?.visible).toBe(true);
   });
 
   it('scales gear thickness without moving layers', () => {

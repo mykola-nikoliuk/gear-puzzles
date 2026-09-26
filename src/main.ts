@@ -173,6 +173,7 @@ function captureLoop({ fps = 25, width = 720, height = 480 } = {}) {
   renderer.setPixelRatio(1);
   renderer.setSize(width, height);
   frameCamera(levelBounds(simulation.system), width, height);
+  view.setTrayVisible(false);
 
   const context = Object.assign(document.createElement('canvas'), { width, height }).getContext(
     '2d',
@@ -187,6 +188,7 @@ function captureLoop({ fps = 25, width = 720, height = 480 } = {}) {
     return context.getImageData(0, 0, width, height);
   });
 
+  view.setTrayVisible(true);
   renderer.setPixelRatio(pixelRatio);
   resize();
   renderer.setAnimationLoop(frame);

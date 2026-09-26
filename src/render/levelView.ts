@@ -127,6 +127,7 @@ export class LevelView {
   private settled = false;
   private readonly pinHeight: number;
   private readonly tray: TrayLayout;
+  private readonly shelf: THREE.Mesh;
   /** Board and tray together, for framing the camera. */
   readonly bounds: Bounds;
 
@@ -143,7 +144,8 @@ export class LevelView {
     const board = mergeBounds(levelBounds(system), levelBounds(reach));
     this.tray = trayLayout(system, board, trayCenterX);
     this.bounds = mergeBounds(board, this.tray.bounds);
-    this.root.add(trayShelf(this.tray.bounds));
+    this.shelf = trayShelf(this.tray.bounds);
+    this.root.add(this.shelf);
     const pinHeight = pinHeightFor(LAYERS - 1);
     this.pinHeight = pinHeight;
     // The motor axle takes no more gears, so its pin stops just above the motor gear.
@@ -281,6 +283,11 @@ export class LevelView {
     const target = this.targetColors.get(id);
     if (target) target.set(color);
     else this.targetColors.set(id, new THREE.Color(color));
+  }
+
+  /** Shows or hides the tray shelf, say for a shot of the board alone. */
+  setTrayVisible(visible: boolean): void {
+    this.shelf.visible = visible;
   }
 
   /** Visual only: stretches every gear along its axle without moving the layers. */
