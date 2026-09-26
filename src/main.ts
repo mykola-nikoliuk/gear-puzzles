@@ -7,6 +7,7 @@ import { checkGoal, type Goal } from './core/goal';
 import type { GearSystem } from './core/model';
 import { demoGoal, demoLevel, demoSolution } from './levels/demo';
 import { generateLevel } from './levels/generate';
+import { numberedLevel } from './levels/progression';
 import { loopPeriod } from './render/animate';
 import { Clock } from './render/clock';
 import { enableGearDragging } from './render/dragGears';
@@ -43,7 +44,13 @@ const sun = new THREE.DirectionalLight('#ffffff', 1.2);
 sun.position.set(-20, -30, 60);
 scene.add(sun);
 
-const hud = createHud(container, demoGoal);
+/** 0 for the hand-made demo; the Next button moves on to generated level 1, 2, … */
+let levelNumber = 0;
+const hud = createHud(container, demoGoal, () => {
+  levelNumber += 1;
+  const { level, goal, solution } = numberedLevel(levelNumber);
+  load(level, goal, solution);
+});
 const camera = new THREE.PerspectiveCamera(35);
 const tilt = { value: 0.6, onChange: () => resize() };
 const MARGIN = 1.15;
@@ -143,7 +150,10 @@ const panel = createPanel({
       hud.setHint(error instanceof Error ? error.message : String(error));
     }
   },
-  demo: () => load(demoLevel, demoGoal, demoSolution),
+  demo: () => {
+    levelNumber = 0;
+    load(demoLevel, demoGoal, demoSolution);
+  },
 });
 
 function frame() {

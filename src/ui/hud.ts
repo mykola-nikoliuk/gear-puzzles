@@ -42,6 +42,11 @@ export function refusalText(system: GearSystem, gearId: string, axleId: string):
   return 'The gear cannot go here';
 }
 
+/** The way on to the next level opens once the puzzle is solved. */
+export function offersNext(status: GoalStatus): boolean {
+  return status.kind === 'solved';
+}
+
 export interface Hud {
   setGoal(goal: Goal): void;
   setStatus(status: GoalStatus): void;
@@ -49,8 +54,8 @@ export interface Hud {
   setHint(text: string | null): void;
 }
 
-/** A small overlay with the goal, the live status and a hint line. */
-export function createHud(parent: HTMLElement, goal: Goal): Hud {
+/** A small overlay with the goal, the live status, a hint line and, once solved, a way on. */
+export function createHud(parent: HTMLElement, goal: Goal, onNext: () => void): Hud {
   const hud = document.createElement('div');
   hud.className = 'hud';
   const goalLine = document.createElement('div');
@@ -60,7 +65,12 @@ export function createHud(parent: HTMLElement, goal: Goal): Hud {
   const hintLine = document.createElement('div');
   hintLine.className = 'hud-hint';
   hintLine.hidden = true;
-  hud.append(goalLine, statusLine, hintLine);
+  const next = document.createElement('button');
+  next.className = 'hud-next';
+  next.textContent = 'Next level →';
+  next.hidden = true;
+  next.addEventListener('click', onNext);
+  hud.append(goalLine, statusLine, hintLine, next);
   parent.append(hud);
 
   return {
@@ -72,6 +82,7 @@ export function createHud(parent: HTMLElement, goal: Goal): Hud {
       if (statusLine.textContent === text) return;
       statusLine.textContent = text;
       statusLine.dataset.kind = status.kind;
+      next.hidden = !offersNext(status);
     },
     setHint(text) {
       hintLine.textContent = text ?? '';

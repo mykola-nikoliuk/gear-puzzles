@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { fraction } from '../core/fraction';
 import { moveGear } from '../core/placement';
 import { demoSolution } from '../levels/demo';
-import { formatVelocity, goalText, refusalText, statusText } from './hud';
+import { formatVelocity, goalText, offersNext, refusalText, statusText } from './hud';
 
 describe('formatVelocity', () => {
   it('shows counter-clockwise speeds with ↺', () => {
@@ -57,5 +57,13 @@ describe('refusalText', () => {
     const idlerOnTop = moveGear(demoSolution, 'output-gear', null);
     const full = moveGear(idlerOnTop, 'compound-small', 'idler', 1);
     expect(refusalText(full, 'output-gear', 'idler')).toMatch(/Both layers/);
+  });
+});
+
+describe('offersNext', () => {
+  it('opens the way on only once solved', () => {
+    expect(offersNext({ kind: 'solved' })).toBe(true);
+    expect(offersNext({ kind: 'idle' })).toBe(false);
+    expect(offersNext({ kind: 'jammed' })).toBe(false);
   });
 });
