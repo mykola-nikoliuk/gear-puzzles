@@ -4,29 +4,20 @@ import type { GearSystem } from '../core/model';
 import type { Propagation } from '../core/propagate';
 import { formatVelocity } from './hud';
 
-export interface AxleInfo {
-  /** Tooth counts of the gears on the axle, bottom layer first, e.g. "24T · 10T". */
-  readonly teeth: string;
-  /** Live speed, "idle" when the motor does not reach it, "jammed" when nothing turns. */
-  readonly speed: string;
-}
-
-/** What to show next to an axle, or `null` for an empty one. */
-export function axleInfo(
+/**
+ * The live speed to show above an axle: "idle" when the motor does not reach it,
+ * "jammed" when nothing turns, `null` for an empty axle.
+ */
+export function axleSpeed(
   system: GearSystem,
   propagation: Propagation,
   axleId: string,
-): AxleInfo | null {
-  const gears = system.gears
-    .filter((gear) => gear.axleId === axleId)
-    .sort((a, b) => a.layer - b.layer);
-  if (gears.length === 0) return null;
-
-  const teeth = gears.map((gear) => `${gear.teeth}T`).join(' · ');
-  if (propagation.kind === 'jammed') return { teeth, speed: 'jammed' };
+): string | null {
+  if (!system.gears.some((gear) => gear.axleId === axleId)) return null;
+  if (propagation.kind === 'jammed') return 'jammed';
 
   const velocity = propagation.velocities.get(axleId);
-  return { teeth, speed: velocity ? formatVelocity(velocity, { unit: false }) : 'idle' };
+  return velocity ? formatVelocity(velocity, { unit: false }) : 'idle';
 }
 
 /** Floating HTML labels above the axles; render them with a `CSS2DRenderer`. */
@@ -48,13 +39,12 @@ export class AxleLabels {
 
   update(system: GearSystem, propagation: Propagation): void {
     for (const [axleId, label] of this.labels) {
-      const info = axleInfo(system, propagation, axleId);
-      const text = info ? `${info.teeth}\n${info.speed}` : '';
+      const text = axleSpeed(system, propagation, axleId) ?? '';
       if (text === label.text) continue;
 
       label.text = text;
       label.object.element.textContent = text;
-      label.object.visible = info !== null;
+      label.object.visible = text !== '';
     }
   }
 }
