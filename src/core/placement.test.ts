@@ -38,6 +38,10 @@ describe('placementError', () => {
     expect(placementError(system, 'motor', 'c')).toBe('driver');
   });
 
+  it('keeps other gears off the motor axle, even on a free layer', () => {
+    expect(placementError(system, 'upper', 'a')).toBe('driver');
+  });
+
   it('reports unknown ids', () => {
     expect(placementError(system, 'nope', 'c')).toBe('unknown-gear');
     expect(placementError(system, 'loose', 'nope')).toBe('unknown-axle');

@@ -1,7 +1,7 @@
 import { meshes, tipRadius, type Axle, type Gear, type GearSystem } from './model';
 
 export type PlacementError =
-  /** Gears on the motor axle are part of the level and cannot move. */
+  /** The motor axle is part of the level: its gears cannot move and nothing can join them. */
   | 'driver'
   | 'unknown-gear'
   | 'unknown-axle'
@@ -18,7 +18,7 @@ export function placementError(
 ): PlacementError | null {
   const gear = system.gears.find(({ id }) => id === gearId);
   if (!gear) return 'unknown-gear';
-  if (gear.axleId === system.driver.axleId) return 'driver';
+  if (gear.axleId === system.driver.axleId || axleId === system.driver.axleId) return 'driver';
 
   const axles = new Map(system.axles.map((axle) => [axle.id, axle]));
   const target = axles.get(axleId);
