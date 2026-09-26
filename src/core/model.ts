@@ -15,7 +15,7 @@ export interface Axle {
 
 /**
  * Gears only mesh with gears on the same layer, so a compound gear is two gears
- * on one axle and different layers.
+ * on one axle and different layers. Any gear can go on any layer.
  */
 export interface Gear {
   readonly id: string;
@@ -24,6 +24,9 @@ export interface Gear {
   readonly teeth: number;
   readonly layer: number;
 }
+
+/** How many gears fit on one axle, one per layer. */
+export const LAYERS = 2;
 
 export type PlacedGear = Gear & { readonly axleId: string };
 

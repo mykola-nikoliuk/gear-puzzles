@@ -26,7 +26,7 @@ describe('solve', () => {
 
   it('solves the demo in one move', () => {
     const solution = solve(demoLevel, demoGoal);
-    expect(solution?.moves).toEqual([{ gearId: 'compound-small', axleId: 'compound' }]);
+    expect(solution?.moves).toEqual([{ gearId: 'compound-small', axleId: 'compound', layer: 1 }]);
   });
 
   it('needs no moves when the start is already solved', () => {
@@ -42,7 +42,7 @@ describe('solve', () => {
     const moves = solve(blocked, goal)?.moves;
     expect(moves).toHaveLength(2);
     expect(moves?.[0]?.gearId).toBe('small');
-    expect(moves?.[1]).toEqual({ gearId: 'big', axleId: 'b' });
+    expect(moves?.[1]).toEqual({ gearId: 'big', axleId: 'b', layer: 0 });
   });
 
   it('places a gear from the tray', () => {
@@ -50,18 +50,34 @@ describe('solve', () => {
       ...blocked,
       gears: blocked.gears.map((g) => (g.id === 'small' ? { ...g, axleId: null } : g)),
     };
-    expect(solve(inTray, goal)?.moves).toEqual([{ gearId: 'big', axleId: 'b' }]);
+    expect(solve(inTray, goal)?.moves).toEqual([{ gearId: 'big', axleId: 'b', layer: 0 }]);
   });
 
-  it('can clear the way by putting a gear in the tray', () => {
-    // Without the spare axle, `small` can only make way for `big` by going to the tray.
+  it('lifts a gear to the free layer to clear the way', () => {
     const noSpare: GearSystem = {
       ...blocked,
       axles: blocked.axles.filter((a) => a.id !== 'spare'),
     };
     expect(solve(noSpare, goal)?.moves).toEqual([
-      { gearId: 'small', axleId: null },
-      { gearId: 'big', axleId: 'b' },
+      { gearId: 'small', axleId: 'b', layer: 1 },
+      { gearId: 'big', axleId: 'b', layer: 0 },
+    ]);
+  });
+
+  it('can clear the way by putting a gear in the tray', () => {
+    // Every other spot for `small` is taken: the second layers of `b` and `far` hold caps.
+    const crowded: GearSystem = {
+      ...blocked,
+      axles: blocked.axles.filter((a) => a.id !== 'spare'),
+      gears: [
+        ...blocked.gears,
+        { id: 'cap-b', axleId: 'b', teeth: 6, layer: 1 },
+        { id: 'cap-far', axleId: 'far', teeth: 6, layer: 1 },
+      ],
+    };
+    expect(solve(crowded, goal)?.moves).toEqual([
+      { gearId: 'small', axleId: null, layer: 0 },
+      { gearId: 'big', axleId: 'b', layer: 0 },
     ]);
   });
 

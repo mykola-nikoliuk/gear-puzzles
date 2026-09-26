@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { moveGear } from '../core/placement';
 import { demoSolution } from '../levels/demo';
 import { GEAR_THICKNESS, layerElevation } from './gearMesh';
-import { LevelView, levelBounds } from './levelView';
+import { LevelView, layerColor, levelBounds } from './levelView';
 
 describe('levelBounds', () => {
   it('covers the tips of every gear and the room around empty axles', () => {
@@ -33,6 +33,19 @@ describe('LevelView', () => {
   it('places gears on their axle and layer', () => {
     const mesh = view.gearMesh('compound-small');
     expect(mesh?.position.toArray()).toEqual([18, 0, layerElevation(1)]);
+  });
+
+  it('colours gears by the layer they sit on, but not the motor gear', () => {
+    const fresh = new LevelView(demoSolution);
+    const color = (id: string) => `#${fresh.gearMesh(id)?.material.color.getHexString()}`;
+    expect(color('compound-small')).toBe(layerColor(1));
+    fresh.placeGears(moveGear(demoSolution, 'compound-small', 'spare-west', 0));
+    expect(color('compound-small')).toBe(layerColor(0));
+    expect(color('motor-gear')).not.toBe(layerColor(0));
+  });
+
+  it('makes pins tall enough for every layer', () => {
+    expect(view.pinTop).toBeGreaterThan(layerElevation(1) + GEAR_THICKNESS);
   });
 
   it('shares geometry between gears with the same tooth count', () => {

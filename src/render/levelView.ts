@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { isPlaced, tipRadius, type Axle, type GearSystem } from '../core/model';
+import { isPlaced, LAYERS, tipRadius, type Axle, type GearSystem } from '../core/model';
 import { GEAR_THICKNESS, gearGeometry, layerElevation } from './gearMesh';
 import { mergeBounds, trayLayout, type TrayLayout } from './tray';
 
@@ -34,6 +34,10 @@ export function levelBounds(system: GearSystem): Bounds {
 
 const LAYER_COLORS = ['#c9a14a', '#9aa7b4', '#b87333'];
 const DRIVER_COLOR = '#e0633a';
+
+export function layerColor(layer: number): string {
+  return LAYER_COLORS[layer % LAYER_COLORS.length] ?? '#ffffff';
+}
 const HIGHLIGHTS = { valid: '#1f6f3a', invalid: '#7a1c1c' } as const;
 const GOAL_COLOR = '#2fd3c0';
 /** How far a dragged gear floats above its layer. */
@@ -66,6 +70,8 @@ export class LevelView {
   private readonly gears = new Map<string, GearMesh>();
   private readonly axles: ReadonlyMap<string, Axle>;
   private readonly pins = new Map<string, THREE.Mesh>();
+  /** Gears coloured by the layer they sit on; the motor gear keeps its own colour. */
+  private readonly layered = new Set<string>();
   private readonly pinHeight: number;
   private readonly tray: TrayLayout;
   /** Board and tray together, for framing the camera. */
@@ -77,8 +83,7 @@ export class LevelView {
     this.tray = trayLayout(system, board);
     this.bounds = mergeBounds(board, this.tray.bounds);
     this.root.add(trayShelf(this.tray.bounds));
-    const topLayer = Math.max(0, ...system.gears.map((gear) => gear.layer));
-    const pinHeight = layerElevation(topLayer) + GEAR_THICKNESS + 0.6;
+    const pinHeight = layerElevation(LAYERS - 1) + GEAR_THICKNESS + 0.6;
     this.pinHeight = pinHeight;
     const pinGeometry = new THREE.CylinderGeometry(0.55, 0.55, pinHeight, 24).rotateX(Math.PI / 2);
     const pinMaterial = materialFor('#3a434d');
@@ -92,10 +97,8 @@ export class LevelView {
 
     for (const gear of system.gears) {
       const isDriver = gear.axleId === system.driver.axleId;
-      const color = isDriver
-        ? DRIVER_COLOR
-        : (LAYER_COLORS[gear.layer % LAYER_COLORS.length] ?? '#ffffff');
-      const mesh = new THREE.Mesh(gearGeometry(gear.teeth), materialFor(color));
+      const mesh = new THREE.Mesh(gearGeometry(gear.teeth), materialFor(DRIVER_COLOR));
+      if (!isDriver) this.layered.add(gear.id);
       this.root.add(mesh);
       this.gears.set(gear.id, mesh);
     }
@@ -121,12 +124,13 @@ export class LevelView {
     return ring;
   }
 
-  /** Puts every gear back on its axle and layer. */
+  /** Puts every gear back on its axle and layer, coloured by that layer. */
   placeGears(system: GearSystem): void {
     const axles = new Map(system.axles.map((axle) => [axle.id, axle]));
     for (const gear of system.gears) {
       const mesh = this.gears.get(gear.id);
       if (!mesh) continue;
+      if (this.layered.has(gear.id)) mesh.material.color.set(layerColor(gear.layer));
       if (gear.axleId === null) {
         const slot = this.tray.slots.get(gear.id);
         if (slot) mesh.position.set(slot.x, slot.y, 0);
@@ -139,9 +143,11 @@ export class LevelView {
     }
   }
 
-  /** Moves a gear freely above its layer while it is being dragged. */
+  /** Moves a gear freely above the layer it would drop onto, in that layer's colour. */
   hoverGear(id: string, x: number, y: number, layer: number): void {
-    this.gears.get(id)?.position.set(x, y, layerElevation(layer) + LIFT);
+    const mesh = this.gears.get(id);
+    mesh?.position.set(x, y, layerElevation(layer) + LIFT);
+    if (this.layered.has(id)) mesh?.material.color.set(layerColor(layer));
   }
 
   /** Visual only: stretches every gear along its axle without moving the layers. */

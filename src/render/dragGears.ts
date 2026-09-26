@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Gear, GearSystem } from '../core/model';
-import { moveGear, nearestAxle, placementError } from '../core/placement';
+import { bestLayer, moveGear, nearestAxle } from '../core/placement';
 import { GEAR_THICKNESS, layerElevation } from './gearMesh';
 import type { LevelView } from './levelView';
 import type { Simulation } from './simulation';
@@ -58,11 +58,10 @@ export function enableGearDragging({ canvas, camera, view, simulation, now }: Op
     return raycaster.ray.intersectPlane(plane, new THREE.Vector3());
   };
 
-  /** The axle the gear would snap to from here, if it is allowed to go there. */
+  /** The axle the gear would snap to from here and the layer it would take, if any is allowed. */
   const target = (point: THREE.Vector3, { gear, layout }: Drag) => {
     const axle = nearestAxle(layout, point.x, point.y, SNAP_DISTANCE);
-    if (!axle) return { axle: undefined, allowed: false };
-    return { axle, allowed: placementError(layout, gear.id, axle.id) === null };
+    return { axle, layer: axle ? bestLayer(layout, gear.id, axle.id) : null };
   };
 
   const onPointerDown = (event: PointerEvent) => {
@@ -89,10 +88,9 @@ export function enableGearDragging({ canvas, camera, view, simulation, now }: Op
     aim(event);
     const point = pointOnLayer(drag.gear.layer);
     if (!point) return;
-    view.hoverGear(drag.gear.id, point.x, point.y, drag.gear.layer);
-
-    const { axle, allowed } = target(point, drag);
-    view.highlight(drag.gear.id, axle ? (allowed ? 'valid' : 'invalid') : null);
+    const { axle, layer } = target(point, drag);
+    view.hoverGear(drag.gear.id, point.x, point.y, layer ?? drag.gear.layer);
+    view.highlight(drag.gear.id, axle ? (layer !== null ? 'valid' : 'invalid') : null);
   };
 
   const onPointerUp = (event: PointerEvent) => {
@@ -100,10 +98,13 @@ export function enableGearDragging({ canvas, camera, view, simulation, now }: Op
 
     aim(event);
     const point = pointOnLayer(drag.gear.layer);
-    const { axle, allowed } = point ? target(point, drag) : { axle: undefined, allowed: false };
-    // Onto a free axle it goes; a forbidden axle sends it back; open space means the tray.
-    const destination = axle ? (allowed ? axle.id : drag.gear.axleId) : null;
-    const layout = moveGear(drag.layout, drag.gear.id, destination);
+    const { axle, layer } = point ? target(point, drag) : { axle: undefined, layer: null };
+    // Onto a free layer it goes; a forbidden axle sends it back; open space means the tray.
+    const layout = !axle
+      ? moveGear(drag.layout, drag.gear.id, null)
+      : layer !== null
+        ? moveGear(drag.layout, drag.gear.id, axle.id, layer)
+        : drag.layout;
 
     simulation.setSystem(layout, now());
     view.placeGears(layout);

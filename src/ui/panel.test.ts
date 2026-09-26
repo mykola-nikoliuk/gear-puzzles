@@ -19,7 +19,7 @@ describe('motorVelocity', () => {
 });
 
 describe('solveLabel', () => {
-  const move = { gearId: 'g', axleId: 'a' };
+  const move = { gearId: 'g', axleId: 'a', layer: 0 };
 
   it('counts the moves', () => {
     expect(solveLabel({ moves: [move], system: demoLevel })).toBe('Solve: 1 move');

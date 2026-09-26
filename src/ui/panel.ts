@@ -71,8 +71,9 @@ export function createPanel({ simulation, clock, view, labels, start, goal, tilt
   const replay = ([move, ...rest]: readonly Move[]) => {
     if (!move) return;
     setTimeout(() => {
-      if (placementError(simulation.system, move.gearId, move.axleId) !== null) return;
-      setLayout(moveGear(simulation.system, move.gearId, move.axleId));
+      const { gearId, axleId, layer } = move;
+      if (placementError(simulation.system, gearId, axleId, layer) !== null) return;
+      setLayout(moveGear(simulation.system, gearId, axleId, layer));
       replay(rest);
     }, MOVE_DELAY);
   };

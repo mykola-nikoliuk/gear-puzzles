@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fraction } from './fraction';
 import type { GearSystem } from './model';
-import { moveGear, nearestAxle, placementError } from './placement';
+import { bestLayer, moveGear, nearestAxle, placementError } from './placement';
 
 const system: GearSystem = {
   axles: [
@@ -53,6 +53,16 @@ describe('placementError', () => {
     expect(placementError(cleared, 'big', 'c')).toBeNull();
   });
 
+  it('lets a gear change layer, even on a taken axle', () => {
+    expect(placementError(system, 'loose', 'b', 1)).toBeNull();
+    expect(placementError(system, 'big', 'above-a', 1)).toBe('occupied');
+  });
+
+  it('refuses layers the axles do not have', () => {
+    expect(placementError(system, 'loose', 'c', 2)).toBe('no-layer');
+    expect(placementError(system, 'loose', 'c', -1)).toBe('no-layer');
+  });
+
   it('reports unknown ids', () => {
     expect(placementError(system, 'nope', 'c')).toBe('unknown-gear');
     expect(placementError(system, 'loose', 'nope')).toBe('unknown-axle');
@@ -66,8 +76,38 @@ describe('moveGear', () => {
     expect(system.gears.find(({ id }) => id === 'big')?.axleId).toBe('b');
   });
 
+  it('puts the gear on the given layer', () => {
+    const moved = moveGear(system, 'loose', 'b', 1);
+    expect(moved.gears.find(({ id }) => id === 'loose')).toMatchObject({ axleId: 'b', layer: 1 });
+  });
+
   it('throws on a forbidden move', () => {
     expect(() => moveGear(system, 'loose', 'b')).toThrow(/occupied/);
+  });
+});
+
+describe('bestLayer', () => {
+  it('takes the lowest free layer', () => {
+    expect(bestLayer(system, 'loose', 'c')).toBe(0);
+  });
+
+  it('goes up a layer when the one below is taken', () => {
+    expect(bestLayer(system, 'loose', 'b')).toBe(1);
+  });
+
+  it('skips a free layer to mesh with a neighbour above', () => {
+    // `upper` has 6 teeth at (0, 10); a 4-tooth gear 5 above it meshes on layer 1 only.
+    const withSpur: GearSystem = {
+      ...system,
+      axles: [...system.axles, { id: 'over-upper', x: 0, y: 15 }],
+      gears: [...system.gears, { id: 'spur', axleId: null, teeth: 4, layer: 0 }],
+    };
+    expect(placementError(withSpur, 'spur', 'over-upper', 0)).toBeNull();
+    expect(bestLayer(withSpur, 'spur', 'over-upper')).toBe(1);
+  });
+
+  it('has nothing to offer where every layer is refused', () => {
+    expect(bestLayer(system, 'loose', 'a')).toBeNull();
   });
 });
 
