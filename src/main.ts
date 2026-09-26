@@ -11,7 +11,7 @@ import { numberedLevel } from './levels/progression';
 import { loopPeriod } from './render/animate';
 import { Clock } from './render/clock';
 import { enableGearDragging } from './render/dragGears';
-import { focusPoint, halfExtents } from './render/framing';
+import { focusPoint, frameCenter, halfExtents } from './render/framing';
 import { LevelView, levelBounds, type Bounds } from './render/levelView';
 import { Simulation } from './render/simulation';
 import { createHud, levelTitle } from './ui/hud';
@@ -108,7 +108,7 @@ function frameCamera(bounds: Bounds, width: number, height: number) {
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
 
-  const focus = focusPoint(active.start, active.goal.axleId);
+  const focus = frameCenter(bounds, focusPoint(active.start, active.goal.axleId));
   const center = new THREE.Vector3(focus.x, focus.y);
   const half = halfExtents(bounds, focus);
   const halfHeight = half.height;

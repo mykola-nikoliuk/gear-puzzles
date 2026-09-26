@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { demoGoal, demoSolution } from '../levels/demo';
-import { focusPoint, halfExtents } from './framing';
+import { focusPoint, frameCenter, halfExtents } from './framing';
 
 describe('focusPoint', () => {
   it('sits halfway between the motor and the output', () => {
@@ -22,5 +22,12 @@ describe('halfExtents', () => {
 
   it('reaches the far edge when off centre', () => {
     expect(halfExtents(bounds, { x: 2, y: 0 })).toEqual({ width: 8, height: 4 });
+  });
+});
+
+describe('frameCenter', () => {
+  it('keeps the focus across and centres the bounds up and down', () => {
+    const bounds = { minX: 0, maxX: 10, minY: -30, maxY: 10 };
+    expect(frameCenter(bounds, { x: 3, y: 5 })).toEqual({ x: 3, y: -10 });
   });
 });

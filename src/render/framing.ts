@@ -25,3 +25,11 @@ export function halfExtents(bounds: Bounds, center: Point2): { width: number; he
     height: Math.max(bounds.maxY - center.y, center.y - bounds.minY),
   };
 }
+
+/**
+ * Where the camera looks: across, at the mechanism, which the tray is centred on;
+ * up and down, at the middle of board and tray, so the tray below leaves no empty band above.
+ */
+export function frameCenter(bounds: Bounds, focus: Point2): Point2 {
+  return { x: focus.x, y: (bounds.minY + bounds.maxY) / 2 };
+}
