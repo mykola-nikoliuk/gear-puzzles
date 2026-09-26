@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { demoLevel } from './levels/demo';
+import { enableGearDragging } from './render/dragGears';
 import { LevelView, levelBounds } from './render/levelView';
 import { Simulation } from './render/simulation';
 
@@ -55,7 +56,10 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-renderer.setAnimationLoop((time) => {
-  level.setAngles(simulation.anglesAt(time / 1000));
+const now = () => performance.now() / 1000;
+enableGearDragging({ canvas: renderer.domElement, camera, view: level, simulation, now });
+
+renderer.setAnimationLoop(() => {
+  level.setAngles(simulation.anglesAt(now()));
   renderer.render(scene, camera);
 });

@@ -9,27 +9,37 @@ export interface Bounds {
   readonly maxY: number;
 }
 
-/** The area covered by every gear's tips, so the camera can frame the whole level. */
+/** Room kept around an empty axle, so a gear dropped there still fits in the frame. */
+const AXLE_MARGIN = 3;
+
+/** The area covered by every gear's tips and every axle, so the camera can frame the level. */
 export function levelBounds(system: GearSystem): Bounds {
   const axles = new Map(system.axles.map((axle) => [axle.id, axle]));
-  let bounds: Bounds = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+  const circles = [
+    ...system.axles.map((axle) => ({ x: axle.x, y: axle.y, r: AXLE_MARGIN })),
+    ...system.gears.flatMap((gear) => {
+      const axle = axles.get(gear.axleId);
+      return axle ? [{ x: axle.x, y: axle.y, r: tipRadius(gear.teeth) }] : [];
+    }),
+  ];
 
-  for (const gear of system.gears) {
-    const axle = axles.get(gear.axleId);
-    if (!axle) continue;
-    const r = tipRadius(gear.teeth);
-    bounds = {
-      minX: Math.min(bounds.minX, axle.x - r),
-      maxX: Math.max(bounds.maxX, axle.x + r),
-      minY: Math.min(bounds.minY, axle.y - r),
-      maxY: Math.max(bounds.maxY, axle.y + r),
-    };
-  }
-  return bounds;
+  return {
+    minX: Math.min(...circles.map(({ x, r }) => x - r)),
+    maxX: Math.max(...circles.map(({ x, r }) => x + r)),
+    minY: Math.min(...circles.map(({ y, r }) => y - r)),
+    maxY: Math.max(...circles.map(({ y, r }) => y + r)),
+  };
 }
 
 const LAYER_COLORS = ['#c9a14a', '#9aa7b4', '#b87333'];
 const DRIVER_COLOR = '#e0633a';
+const HIGHLIGHTS = { valid: '#1f6f3a', invalid: '#7a1c1c' } as const;
+/** How far a dragged gear floats above its layer. */
+const LIFT = 0.8;
+
+export type Highlight = keyof typeof HIGHLIGHTS | null;
+
+type GearMesh = THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
 
 function materialFor(color: string): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({ color, metalness: 0.6, roughness: 0.4 });
@@ -38,7 +48,7 @@ function materialFor(color: string): THREE.MeshStandardMaterial {
 /** Three.js objects for a level: one pin per axle and one spinning mesh per gear. */
 export class LevelView {
   readonly root = new THREE.Group();
-  private readonly gears = new Map<string, THREE.Mesh>();
+  private readonly gears = new Map<string, GearMesh>();
 
   constructor(system: GearSystem) {
     const topLayer = Math.max(0, ...system.gears.map((gear) => gear.layer));
@@ -46,7 +56,6 @@ export class LevelView {
     const pinGeometry = new THREE.CylinderGeometry(0.55, 0.55, pinHeight, 24).rotateX(Math.PI / 2);
     const pinMaterial = materialFor('#3a434d');
 
-    const axles = new Map(system.axles.map((axle) => [axle.id, axle]));
     for (const axle of system.axles) {
       const pin = new THREE.Mesh(pinGeometry, pinMaterial);
       pin.position.set(axle.x, axle.y, pinHeight / 2);
@@ -54,18 +63,44 @@ export class LevelView {
     }
 
     for (const gear of system.gears) {
-      const axle = axles.get(gear.axleId);
-      if (!axle) throw new Error(`Gear ${gear.id} sits on unknown axle ${gear.axleId}`);
-
       const isDriver = gear.axleId === system.driver.axleId;
       const color = isDriver
         ? DRIVER_COLOR
         : (LAYER_COLORS[gear.layer % LAYER_COLORS.length] ?? '#ffffff');
       const mesh = new THREE.Mesh(gearGeometry(gear.teeth), materialFor(color));
-      mesh.position.set(axle.x, axle.y, layerElevation(gear.layer));
       this.root.add(mesh);
       this.gears.set(gear.id, mesh);
     }
+    this.placeGears(system);
+  }
+
+  /** Puts every gear back on its axle and layer. */
+  placeGears(system: GearSystem): void {
+    const axles = new Map(system.axles.map((axle) => [axle.id, axle]));
+    for (const gear of system.gears) {
+      const axle = axles.get(gear.axleId);
+      if (!axle) throw new Error(`Gear ${gear.id} sits on unknown axle ${gear.axleId}`);
+      this.gears.get(gear.id)?.position.set(axle.x, axle.y, layerElevation(gear.layer));
+    }
+  }
+
+  /** Moves a gear freely above its layer while it is being dragged. */
+  hoverGear(id: string, x: number, y: number, layer: number): void {
+    this.gears.get(id)?.position.set(x, y, layerElevation(layer) + LIFT);
+  }
+
+  highlight(id: string, highlight: Highlight): void {
+    this.gears.get(id)?.material.emissive.set(highlight ? HIGHLIGHTS[highlight] : '#000000');
+  }
+
+  /** The id of the frontmost gear under the ray, if any. */
+  gearAt(raycaster: THREE.Raycaster): string | undefined {
+    const [hit] = raycaster.intersectObjects([...this.gears.values()], false);
+    if (!hit) return undefined;
+    for (const [id, mesh] of this.gears) {
+      if (mesh === hit.object) return id;
+    }
+    return undefined;
   }
 
   /** Turns each gear to the given angle in radians; gears missing from the map stay put. */
@@ -76,7 +111,7 @@ export class LevelView {
     }
   }
 
-  gearMesh(id: string): THREE.Mesh | undefined {
+  gearMesh(id: string): GearMesh | undefined {
     return this.gears.get(id);
   }
 }
