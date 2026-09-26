@@ -96,6 +96,12 @@ describe('generateLevel', () => {
     }
   });
 
+  it('gives no hint of the layers in the tray', () => {
+    const { level } = generateLevel(11, { axles: 4, compoundChance: 1 });
+    const inTray = level.gears.filter(({ axleId }) => axleId === null);
+    expect(inTray.every(({ layer }) => layer === 0)).toBe(true);
+  });
+
   it('leaves hints in place when asked', () => {
     const { level } = generateLevel(6, { axles: 4, keep: 2 });
     expect(level.gears.filter(({ axleId }) => axleId !== null)).toHaveLength(3);

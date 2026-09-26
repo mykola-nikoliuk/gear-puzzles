@@ -222,7 +222,10 @@ export function generateLevel(
   );
 
   const gears = solution.gears.map((gear) =>
-    gear.axleId === solution.driver.axleId || kept.has(gear.id) ? gear : { ...gear, axleId: null },
+    gear.axleId === solution.driver.axleId || kept.has(gear.id)
+      ? gear
+      : // All on layer 0, so the tray's colours give no hint of which gears stack.
+        { ...gear, axleId: null, layer: 0 },
   );
   const [motorGear, ...rest] = gears;
   const level: GearSystem = {
