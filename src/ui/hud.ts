@@ -3,10 +3,10 @@ import type { Goal, GoalStatus } from '../core/goal';
 import type { Velocity } from '../core/model';
 
 /** "1/16 turn/s ↺" — the arrow shows the direction, counter-clockwise for positive. */
-export function formatVelocity(velocity: Velocity): string {
+export function formatVelocity(velocity: Velocity, { unit = true } = {}): string {
   if (velocity.num === 0) return 'still';
   const speed = toString(velocity.num > 0 ? velocity : negate(velocity));
-  return `${speed} turn/s ${velocity.num > 0 ? '↺' : '↻'}`;
+  return `${speed}${unit ? ' turn/s' : ''} ${velocity.num > 0 ? '↺' : '↻'}`;
 }
 
 export function goalText(goal: Goal): string {

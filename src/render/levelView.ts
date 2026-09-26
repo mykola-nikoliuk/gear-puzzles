@@ -81,6 +81,11 @@ export class LevelView {
     this.placeGears(system);
   }
 
+  /** Height of the pin tops, the highest point of the board. */
+  get pinTop(): number {
+    return this.pinHeight;
+  }
+
   /** Lights up the output axle and floats a ring above its pin, clear of every gear layer. */
   markGoal(axleId: string): THREE.Object3D {
     const axle = this.axles.get(axleId);

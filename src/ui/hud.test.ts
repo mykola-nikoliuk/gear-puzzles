@@ -11,6 +11,10 @@ describe('formatVelocity', () => {
     expect(formatVelocity(fraction(-3, 8))).toBe('3/8 turn/s ↻');
   });
 
+  it('can drop the unit for compact labels', () => {
+    expect(formatVelocity(fraction(-1, 8), { unit: false })).toBe('1/8 ↻');
+  });
+
   it('calls zero still', () => {
     expect(formatVelocity(fraction(0))).toBe('still');
   });

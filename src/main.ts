@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { checkGoal } from './core/goal';
 import { demoGoal, demoLevel, demoSolution } from './levels/demo';
 import { Clock } from './render/clock';
@@ -7,6 +8,7 @@ import { enableGearDragging } from './render/dragGears';
 import { LevelView, levelBounds } from './render/levelView';
 import { Simulation } from './render/simulation';
 import { createHud } from './ui/hud';
+import { AxleLabels } from './ui/labels';
 import { createPanel } from './ui/panel';
 
 function getContainer(): HTMLElement {
@@ -22,6 +24,10 @@ renderer.setPixelRatio(window.devicePixelRatio);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 container.appendChild(renderer.domElement);
 
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.domElement.className = 'label-layer';
+container.appendChild(labelRenderer.domElement);
+
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#101418');
 scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment()).texture;
@@ -35,6 +41,8 @@ const level = new LevelView(demoLevel);
 const simulation = new Simulation(demoLevel);
 scene.add(level.root);
 level.markGoal(demoGoal.axleId);
+const labels = new AxleLabels(demoLevel, level.pinTop);
+scene.add(labels.root);
 const updateHud = createHud(container, demoGoal);
 
 const bounds = levelBounds(demoLevel);
@@ -57,6 +65,7 @@ function resize() {
   camera.position.set(center.x, center.y - distance * tilt.value, distance);
   camera.lookAt(center);
   renderer.setSize(width, height);
+  labelRenderer.setSize(width, height);
 }
 
 window.addEventListener('resize', resize);
@@ -69,6 +78,7 @@ createPanel({
   simulation,
   clock,
   view: level,
+  labels: labels.root,
   layouts: { start: demoLevel, solution: demoSolution },
   tilt,
 });
@@ -76,5 +86,7 @@ createPanel({
 renderer.setAnimationLoop(() => {
   level.setAngles(simulation.anglesAt(now()));
   updateHud(checkGoal(simulation.state, demoGoal));
+  labels.update(simulation.system, simulation.state);
   renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
 });
