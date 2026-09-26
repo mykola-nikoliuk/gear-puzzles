@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { tipRadius } from '../core/model';
 import { demoLevel } from '../levels/demo';
-import { mergeBounds, trayLayout } from './tray';
+import type { GearSystem } from '../core/model';
+import { mergeBounds, trayLayout, trayRows } from './tray';
 
 const board = { minX: 0, maxX: 40, minY: 0, maxY: 20 };
 
@@ -35,6 +36,48 @@ describe('trayLayout', () => {
     const [first, second] = [...tray.slots.values()];
     const gap = (second?.x ?? 0) - (first?.x ?? 0);
     expect(gap).toBeGreaterThan(tipRadius(8) + tipRadius(24));
+  });
+});
+
+describe('trayRows', () => {
+  it('adds a row past 5 gears and another past 10', () => {
+    expect([1, 5, 6, 10, 11, 15].map(trayRows)).toEqual([1, 1, 2, 2, 3, 3]);
+  });
+});
+
+describe('trayLayout with many gears', () => {
+  const crowded = (count: number): GearSystem => ({
+    ...demoLevel,
+    gears: [
+      ...demoLevel.gears.filter((gear) => gear.axleId === demoLevel.driver.axleId),
+      ...Array.from({ length: count }, (_, i) => ({
+        id: `g${i}`,
+        axleId: null,
+        teeth: 12,
+        layer: 0,
+      })),
+    ],
+  });
+  const rowsOf = (count: number) =>
+    new Set([...trayLayout(crowded(count), board).slots.values()].map(({ y }) => y)).size;
+
+  it('keeps up to 5 gears on one row', () => {
+    expect(rowsOf(5)).toBe(1);
+  });
+
+  it('splits 6 to 10 gears over two rows', () => {
+    expect(rowsOf(6)).toBe(2);
+    expect(rowsOf(10)).toBe(2);
+  });
+
+  it('uses three rows beyond 10 gears', () => {
+    expect(rowsOf(11)).toBe(3);
+  });
+
+  it('stacks rows downward without overlap', () => {
+    const ys = [...new Set([...trayLayout(crowded(8), board).slots.values()].map(({ y }) => y))];
+    const [first = 0, second = 0] = ys;
+    expect(second).toBeLessThan(first - 2 * tipRadius(12));
   });
 });
 
