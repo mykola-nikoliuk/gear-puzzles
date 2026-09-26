@@ -128,6 +128,16 @@ describe('LevelView', () => {
     expect(`#${mesh?.material.color.getHexString()}`).toBe(LOOSE_COLOR);
   });
 
+  it('tells how long until the moved gears land', () => {
+    const fresh = new LevelView(demoSolution);
+    expect(fresh.placeGears(demoSolution)).toBe(0);
+    const landing = fresh.placeGears(moveGear(demoSolution, 'idler-gear', 'spare-south'));
+    expect(landing).toBeGreaterThan(0);
+    fresh.update(0);
+    fresh.update(landing);
+    expect(fresh.moving).toBe(false);
+  });
+
   it('drops a released gear straight down onto its axle', () => {
     const fresh = new LevelView(demoSolution);
     fresh.hoverGear('idler-gear', 0, -10);

@@ -120,8 +120,8 @@ export function enableGearDragging({
     // A refused drop sends the gear back where it came from.
     const layout = (point && target(point, drag).next) ?? drag.layout;
 
-    simulation.setSystem(layout, now());
-    view.placeGears(layout);
+    // The train takes the new layout only once the gear has landed.
+    simulation.setSystem(layout, now(), view.placeGears(layout));
     view.highlight(drag.gear.id, null);
     onRefusal(null);
     canvas.releasePointerCapture(event.pointerId);

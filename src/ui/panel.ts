@@ -103,8 +103,7 @@ export function createPanel({ clock, level, tilt, generate, demo }: Options): Pa
   const setLayout = (layout: GearSystem) => {
     const { simulation, view } = level();
     const system = { ...layout, driver: { ...layout.driver, velocity: driverVelocity() } };
-    simulation.setSystem(system, clock.now());
-    view.placeGears(system);
+    simulation.setSystem(system, clock.now(), view.placeGears(system));
   };
   const updateMotor = () => setLayout(level().simulation.system);
   const updateLooks = () => {

@@ -174,8 +174,10 @@ export class LevelView {
   /**
    * Sends every gear to its axle and layer (or tray slot): after the first call, gears that
    * moved are carried there (up, across, down) and fade to their new colour as `update` runs.
+   * Returns how many seconds until the last of them lands.
    */
-  placeGears(system: GearSystem): void {
+  placeGears(system: GearSystem): number {
+    let landing = 0;
     const axles = new Map(system.axles.map((axle) => [axle.id, axle]));
     for (const gear of system.gears) {
       const mesh = this.gears.get(gear.id);
@@ -208,9 +210,11 @@ export class LevelView {
           Math.max(CARRY_SECONDS.min, length / CARRY_SPEED),
         );
         this.motions.set(gear.id, { from, to, seconds, start: null });
+        landing = Math.max(landing, seconds);
       }
     }
     this.settled = true;
+    return landing;
   }
 
   /** Height of a carried gear's bottom face: clear of every pin. */

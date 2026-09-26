@@ -147,10 +147,12 @@ const panel = createPanel({
 });
 
 function frame() {
-  active.view.update(performance.now() / 1000);
-  active.view.setAngles(active.simulation.anglesAt(now()));
-  hud.setStatus(checkGoal(active.simulation.state, active.goal));
-  active.labelSet.update(active.simulation.system, active.simulation.state);
+  const { simulation, view, labelSet, goal } = active;
+  view.update(performance.now() / 1000);
+  view.setAngles(simulation.anglesAt(now()));
+  const shown = simulation.shownAt(now());
+  hud.setStatus(checkGoal(shown.state, goal));
+  labelSet.update(shown.system, shown.state);
   renderer.render(scene, camera);
   labelRenderer.render(scene, camera);
 }
