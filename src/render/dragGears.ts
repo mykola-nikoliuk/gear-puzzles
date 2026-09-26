@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Gear, GearSystem } from '../core/model';
-import { bestLayer, moveGear, nearestAxle } from '../core/placement';
+import { bestLayer, moveGear, nearestAxle, swapGears } from '../core/placement';
 import { GEAR_THICKNESS, layerElevation } from './gearMesh';
 import { refusalText } from '../ui/hud';
 import type { LevelView } from './levelView';
@@ -68,11 +68,24 @@ export function enableGearDragging({
     return raycaster.ray.intersectPlane(plane, new THREE.Vector3());
   };
 
-  /** The axle the gear would snap to from here and the layer it would take, if any is allowed. */
+  /**
+   * The axle the gear would snap to from here and the layout after dropping it there:
+   * on a free layer, else by trading places with a gear on that axle; `null` if refused.
+   * Away from every axle, the gear goes to the tray.
+   */
   const target = (point: THREE.Vector3, { gear, layout }: Drag) => {
     const axle = nearestAxle(layout, point.x, point.y, SNAP_DISTANCE);
-    return { axle, layer: axle ? bestLayer(layout, gear.id, axle.id) : null };
+    if (!axle) return { axle, next: moveGear(layout, gear.id, null) };
+    const layer = bestLayer(layout, gear.id, axle.id);
+    const next =
+      layer !== null
+        ? moveGear(layout, gear.id, axle.id, layer)
+        : swapGears(layout, gear.id, axle.id);
+    return { axle, next };
   };
+
+  const layerIn = (layout: GearSystem | null, id: string) =>
+    layout?.gears.find((gear) => gear.id === id)?.layer;
 
   const onPointerDown = (event: PointerEvent) => {
     const gear = draggableGearAt(event);
@@ -98,10 +111,11 @@ export function enableGearDragging({
     aim(event);
     const point = pointOnLayer(drag.gear.layer);
     if (!point) return;
-    const { axle, layer } = target(point, drag);
+    const { axle, next } = target(point, drag);
+    const layer = axle ? layerIn(next, drag.gear.id) : undefined;
     view.hoverGear(drag.gear.id, point.x, point.y, layer ?? drag.gear.layer);
-    view.highlight(drag.gear.id, axle ? (layer !== null ? 'valid' : 'invalid') : null);
-    onRefusal(axle && layer === null ? refusalText(drag.layout, drag.gear.id, axle.id) : null);
+    view.highlight(drag.gear.id, axle ? (next ? 'valid' : 'invalid') : null);
+    onRefusal(axle && !next ? refusalText(drag.layout, drag.gear.id, axle.id) : null);
   };
 
   const onPointerUp = (event: PointerEvent) => {
@@ -109,13 +123,8 @@ export function enableGearDragging({
 
     aim(event);
     const point = pointOnLayer(drag.gear.layer);
-    const { axle, layer } = point ? target(point, drag) : { axle: undefined, layer: null };
-    // Onto a free layer it goes; a forbidden axle sends it back; open space means the tray.
-    const layout = !axle
-      ? moveGear(drag.layout, drag.gear.id, null)
-      : layer !== null
-        ? moveGear(drag.layout, drag.gear.id, axle.id, layer)
-        : drag.layout;
+    // A refused drop sends the gear back where it came from.
+    const layout = (point && target(point, drag).next) ?? drag.layout;
 
     simulation.setSystem(layout, now());
     view.placeGears(layout);

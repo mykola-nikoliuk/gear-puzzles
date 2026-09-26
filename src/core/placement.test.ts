@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fraction } from './fraction';
 import type { GearSystem } from './model';
-import { bestLayer, moveGear, nearestAxle, placementError } from './placement';
+import { bestLayer, moveGear, nearestAxle, placementError, swapGears } from './placement';
 
 const system: GearSystem = {
   axles: [
@@ -108,6 +108,38 @@ describe('bestLayer', () => {
 
   it('has nothing to offer where every layer is refused', () => {
     expect(bestLayer(system, 'loose', 'a')).toBeNull();
+  });
+});
+
+describe('swapGears', () => {
+  const spot = (layout: GearSystem | null, id: string) =>
+    layout?.gears.find((gear) => gear.id === id);
+
+  it('trades axles and layers with the gear already there', () => {
+    const swapped = swapGears(system, 'upper', 'c');
+    expect(spot(swapped, 'upper')).toMatchObject({ axleId: 'c', layer: 0 });
+    expect(spot(swapped, 'loose')).toMatchObject({ axleId: 'above-a', layer: 1 });
+  });
+
+  it('sends the other gear to the tray when the dropped one came from there', () => {
+    const fromTray = moveGear(system, 'upper', null);
+    const swapped = swapGears(fromTray, 'upper', 'c');
+    expect(spot(swapped, 'upper')).toMatchObject({ axleId: 'c', layer: 0 });
+    expect(spot(swapped, 'loose')?.axleId).toBeNull();
+  });
+
+  it('refuses a trade where either gear would clash', () => {
+    // `loose` has 10 teeth: on `b` it would grind against the motor.
+    expect(swapGears(system, 'loose', 'b')).toBeNull();
+  });
+
+  it('never trades with the motor gear', () => {
+    expect(swapGears(system, 'loose', 'a')).toBeNull();
+    expect(swapGears(system, 'motor', 'c')).toBeNull();
+  });
+
+  it('has nothing to trade with on an empty axle', () => {
+    expect(swapGears(system, 'loose', 'near-b')).toBeNull();
   });
 });
 

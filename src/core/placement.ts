@@ -92,6 +92,24 @@ export function bestLayer(system: GearSystem, gearId: string, axleId: string): n
   return allowed.find(engages) ?? allowed[0] ?? null;
 }
 
+/**
+ * Drops `gearId` on `axleId` by trading places with a gear already there: that gear takes
+ * the dropped one's old spot (the tray if it came from there). `null` if no trade works.
+ */
+export function swapGears(system: GearSystem, gearId: string, axleId: string): GearSystem | null {
+  const gear = system.gears.find(({ id }) => id === gearId);
+  if (!gear || gear.axleId === axleId || placementError(system, gearId, null) !== null) return null;
+
+  for (const other of system.gears.filter((candidate) => candidate.axleId === axleId)) {
+    const lifted = moveGear(system, gearId, null);
+    if (placementError(lifted, other.id, gear.axleId, gear.layer) !== null) continue;
+    const traded = moveGear(lifted, other.id, gear.axleId, gear.layer);
+    if (placementError(traded, gearId, axleId, other.layer) !== null) continue;
+    return moveGear(traded, gearId, axleId, other.layer);
+  }
+  return null;
+}
+
 /** The closest axle within `maxDistance` of a point, if any. */
 export function nearestAxle(
   system: GearSystem,
