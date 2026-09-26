@@ -17,6 +17,30 @@
         height: 100%;
         /* Pointer drags move gears, not the page. */
         touch-action: none;
+        position: relative;
+      }
+      .hud {
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        padding: 12px 16px;
+        border-radius: 10px;
+        background: rgb(20 26 32 / 85%);
+        color: #d8dee4;
+        font:
+          15px/1.5 system-ui,
+          sans-serif;
+        pointer-events: none;
+      }
+      .hud-status {
+        color: #9aa7b4;
+      }
+      .hud-status[data-kind='solved'] {
+        color: #2fd3c0;
+        font-weight: 600;
+      }
+      .hud-status[data-kind='jammed'] {
+        color: #e0633a;
       }
     </style>
   </head>

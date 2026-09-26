@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { tipRadius, type GearSystem } from '../core/model';
+import { tipRadius, type Axle, type GearSystem } from '../core/model';
 import { GEAR_THICKNESS, gearGeometry, layerElevation } from './gearMesh';
 
 export interface Bounds {
@@ -34,6 +34,7 @@ export function levelBounds(system: GearSystem): Bounds {
 const LAYER_COLORS = ['#c9a14a', '#9aa7b4', '#b87333'];
 const DRIVER_COLOR = '#e0633a';
 const HIGHLIGHTS = { valid: '#1f6f3a', invalid: '#7a1c1c' } as const;
+const GOAL_COLOR = '#2fd3c0';
 /** How far a dragged gear floats above its layer. */
 const LIFT = 0.8;
 
@@ -49,10 +50,15 @@ function materialFor(color: string): THREE.MeshStandardMaterial {
 export class LevelView {
   readonly root = new THREE.Group();
   private readonly gears = new Map<string, GearMesh>();
+  private readonly axles: ReadonlyMap<string, Axle>;
+  private readonly pins = new Map<string, THREE.Mesh>();
+  private readonly pinHeight: number;
 
   constructor(system: GearSystem) {
+    this.axles = new Map(system.axles.map((axle) => [axle.id, axle]));
     const topLayer = Math.max(0, ...system.gears.map((gear) => gear.layer));
     const pinHeight = layerElevation(topLayer) + GEAR_THICKNESS + 0.6;
+    this.pinHeight = pinHeight;
     const pinGeometry = new THREE.CylinderGeometry(0.55, 0.55, pinHeight, 24).rotateX(Math.PI / 2);
     const pinMaterial = materialFor('#3a434d');
 
@@ -60,6 +66,7 @@ export class LevelView {
       const pin = new THREE.Mesh(pinGeometry, pinMaterial);
       pin.position.set(axle.x, axle.y, pinHeight / 2);
       this.root.add(pin);
+      this.pins.set(axle.id, pin);
     }
 
     for (const gear of system.gears) {
@@ -72,6 +79,20 @@ export class LevelView {
       this.gears.set(gear.id, mesh);
     }
     this.placeGears(system);
+  }
+
+  /** Lights up the output axle and floats a ring above its pin, clear of every gear layer. */
+  markGoal(axleId: string): THREE.Object3D {
+    const axle = this.axles.get(axleId);
+    const pin = this.pins.get(axleId);
+    if (!axle || !pin) throw new Error(`Goal sits on unknown axle ${axleId}`);
+
+    const glow = new THREE.MeshBasicMaterial({ color: GOAL_COLOR });
+    pin.material = glow;
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.18, 12, 48), glow);
+    ring.position.set(axle.x, axle.y, this.pinHeight + 0.3);
+    this.root.add(ring);
+    return ring;
   }
 
   /** Puts every gear back on its axle and layer. */

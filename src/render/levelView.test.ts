@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { moveGear } from '../core/placement';
 import { demoSolution } from '../levels/demo';
-import { layerElevation } from './gearMesh';
+import { GEAR_THICKNESS, layerElevation } from './gearMesh';
 import { LevelView, levelBounds } from './levelView';
 
 describe('levelBounds', () => {
@@ -56,5 +56,15 @@ describe('LevelView', () => {
     expect(view.gearMesh('idler-gear')?.material.emissive.getHexString()).not.toBe('000000');
     view.highlight('idler-gear', null);
     expect(view.gearMesh('idler-gear')?.material.emissive.getHexString()).toBe('000000');
+  });
+
+  it('marks the goal axle with a ring', () => {
+    const fresh = new LevelView(demoSolution);
+    const ring = fresh.markGoal('output');
+    expect(ring.position.x).toBe(27);
+    expect(ring.position.y).toBe(12);
+    expect(ring.position.z).toBeGreaterThan(layerElevation(1) + GEAR_THICKNESS);
+    expect(fresh.root.children).toContain(ring);
+    expect(() => fresh.markGoal('nope')).toThrow(/unknown axle/);
   });
 });

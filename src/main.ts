@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { demoLevel } from './levels/demo';
+import { checkGoal } from './core/goal';
+import { demoGoal, demoLevel } from './levels/demo';
 import { enableGearDragging } from './render/dragGears';
 import { LevelView, levelBounds } from './render/levelView';
 import { Simulation } from './render/simulation';
+import { createHud } from './ui/hud';
 
 function getContainer(): HTMLElement {
   const element = document.getElementById('app');
@@ -30,6 +32,8 @@ scene.add(sun);
 const level = new LevelView(demoLevel);
 const simulation = new Simulation(demoLevel);
 scene.add(level.root);
+level.markGoal(demoGoal.axleId);
+const updateHud = createHud(container, demoGoal);
 
 const bounds = levelBounds(demoLevel);
 const center = new THREE.Vector3((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);
@@ -61,5 +65,6 @@ enableGearDragging({ canvas: renderer.domElement, camera, view: level, simulatio
 
 renderer.setAnimationLoop(() => {
   level.setAngles(simulation.anglesAt(now()));
+  updateHud(checkGoal(simulation.state, demoGoal));
   renderer.render(scene, camera);
 });
