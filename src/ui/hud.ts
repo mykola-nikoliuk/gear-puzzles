@@ -10,6 +10,11 @@ export function formatVelocity(velocity: Velocity, { unit = true } = {}): string
   return `${speed}${unit ? ' turn/s' : ''} ${velocity.num > 0 ? '↺' : '↻'}`;
 }
 
+/** The hand-made demo is level 0, a tutorial; generated levels count from 1. */
+export function levelTitle(number: number): string {
+  return number === 0 ? 'Tutorial' : `Level ${number}`;
+}
+
 export function goalText(goal: Goal): string {
   return `Goal: output at ${formatVelocity(goal.velocity)}`;
 }
@@ -48,6 +53,7 @@ export function offersNext(status: GoalStatus): boolean {
 }
 
 export interface Hud {
+  setTitle(title: string): void;
   setGoal(goal: Goal): void;
   setStatus(status: GoalStatus): void;
   /** A passing note under the status, such as why a drop is refused; `null` hides it. */
@@ -58,6 +64,9 @@ export interface Hud {
 export function createHud(parent: HTMLElement, goal: Goal, onNext: () => void): Hud {
   const hud = document.createElement('div');
   hud.className = 'hud';
+  const titleLine = document.createElement('div');
+  titleLine.className = 'hud-title';
+  titleLine.textContent = levelTitle(0);
   const goalLine = document.createElement('div');
   goalLine.textContent = goalText(goal);
   const statusLine = document.createElement('div');
@@ -70,10 +79,13 @@ export function createHud(parent: HTMLElement, goal: Goal, onNext: () => void): 
   next.textContent = 'Next level →';
   next.hidden = true;
   next.addEventListener('click', onNext);
-  hud.append(goalLine, statusLine, hintLine, next);
+  hud.append(titleLine, goalLine, statusLine, hintLine, next);
   parent.append(hud);
 
   return {
+    setTitle(title) {
+      titleLine.textContent = title;
+    },
     setGoal(next) {
       goalLine.textContent = goalText(next);
     },

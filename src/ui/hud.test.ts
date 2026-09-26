@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { fraction } from '../core/fraction';
 import { moveGear } from '../core/placement';
 import { demoSolution } from '../levels/demo';
-import { formatVelocity, goalText, offersNext, refusalText, statusText } from './hud';
+import { formatVelocity, goalText, levelTitle, offersNext, refusalText, statusText } from './hud';
 
 describe('formatVelocity', () => {
   it('shows counter-clockwise speeds with ↺', () => {
@@ -65,5 +65,12 @@ describe('offersNext', () => {
     expect(offersNext({ kind: 'solved' })).toBe(true);
     expect(offersNext({ kind: 'idle' })).toBe(false);
     expect(offersNext({ kind: 'jammed' })).toBe(false);
+  });
+});
+
+describe('levelTitle', () => {
+  it('calls the demo a tutorial and numbers the rest', () => {
+    expect(levelTitle(0)).toBe('Tutorial');
+    expect(levelTitle(3)).toBe('Level 3');
   });
 });

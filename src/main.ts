@@ -14,7 +14,7 @@ import { enableGearDragging } from './render/dragGears';
 import { focusPoint, halfExtents } from './render/framing';
 import { LevelView, levelBounds, type Bounds } from './render/levelView';
 import { Simulation } from './render/simulation';
-import { createHud } from './ui/hud';
+import { createHud, levelTitle } from './ui/hud';
 import { AxleLabels } from './ui/labels';
 import { createPanel, type ActiveLevel } from './ui/panel';
 
@@ -50,6 +50,7 @@ const hud = createHud(container, demoGoal, () => {
   levelNumber += 1;
   const { level, goal, solution } = numberedLevel(levelNumber);
   load(level, goal, solution);
+  hud.setTitle(levelTitle(levelNumber));
 });
 const camera = new THREE.PerspectiveCamera(35);
 const tilt = { value: 0.6, onChange: () => resize() };
@@ -146,6 +147,7 @@ const panel = createPanel({
     try {
       const { level, goal, solution } = generateLevel(seed, options);
       load(level, goal, solution);
+      hud.setTitle(`Seed ${seed}`);
     } catch (error) {
       hud.setHint(error instanceof Error ? error.message : String(error));
     }
@@ -153,6 +155,7 @@ const panel = createPanel({
   demo: () => {
     levelNumber = 0;
     load(demoLevel, demoGoal, demoSolution);
+    hud.setTitle(levelTitle(levelNumber));
   },
 });
 
