@@ -5,8 +5,13 @@ import { LevelView, levelBounds } from './levelView';
 
 describe('levelBounds', () => {
   it('covers the tips of every gear', () => {
-    // Motor gear: 12 teeth, tip radius 7 around (0, 0). Output gear: 20 teeth, tip 11 around (27, 12).
-    expect(levelBounds(demoLevel)).toEqual({ minX: -11, maxX: 38, minY: -13, maxY: 23 });
+    // Idler: 8 teeth, tip radius 4.75 around (-6, 8). Output: 20 teeth, tip 10.75 around (27, 12).
+    expect(levelBounds(demoLevel)).toEqual({
+      minX: -10.75,
+      maxX: 37.75,
+      minY: -12.75,
+      maxY: 22.75,
+    });
   });
 });
 

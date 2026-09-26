@@ -5,9 +5,13 @@ export interface Point {
   readonly y: number;
 }
 
-/** Standard proportions for module 1: teeth reach one unit above the pitch circle, 1.25 below. */
-const ADDENDUM = 1;
-const DEDENDUM = 1.25;
+/**
+ * Standard module-1 proportions (1 above the pitch circle, 1.25 below) scaled to 75%:
+ * full-height teeth look too spiky at the sizes used on the board.
+ */
+const TOOTH_SCALE = 0.75;
+const ADDENDUM = 1 * TOOTH_SCALE;
+const DEDENDUM = 1.25 * TOOTH_SCALE;
 
 /** Angular layout of one tooth as fractions of its pitch step, centred on the tooth axis. */
 const ROOT_HALF_WIDTH = 0.3;
