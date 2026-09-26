@@ -4,7 +4,8 @@ import { fraction } from './fraction';
 import { checkGoal, type Goal } from './goal';
 import type { GearSystem } from './model';
 import { propagate } from './propagate';
-import { solve } from './solver';
+import { moveGear } from './placement';
+import { movesTo, solve } from './solver';
 
 describe('solve', () => {
   // The output axle `b` needs the 10-tooth gear, but a 6-tooth gear sits there first.
@@ -88,5 +89,26 @@ describe('solve', () => {
   it('gives up when the search budget runs out', () => {
     // Solvable in two moves, but not within three explored layouts.
     expect(solve(blocked, goal, { maxStates: 3 })).toBeNull();
+  });
+});
+
+describe('movesTo', () => {
+  it('places what is missing', () => {
+    expect(movesTo(demoLevel, demoSolution)).toEqual([
+      { gearId: 'compound-small', axleId: 'compound', layer: 1 },
+    ]);
+  });
+
+  it('clears misplaced gears before placing them', () => {
+    const scrambled = moveGear(demoLevel, 'output-gear', 'spare-south');
+    expect(movesTo(scrambled, demoSolution)).toEqual([
+      { gearId: 'output-gear', axleId: null, layer: 1 },
+      { gearId: 'compound-small', axleId: 'compound', layer: 1 },
+      { gearId: 'output-gear', axleId: 'output', layer: 1 },
+    ]);
+  });
+
+  it('has nothing to do when the layouts match', () => {
+    expect(movesTo(demoSolution, demoSolution)).toEqual([]);
   });
 });

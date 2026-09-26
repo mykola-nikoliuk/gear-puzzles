@@ -82,3 +82,30 @@ export function solve(
   }
   return null;
 }
+
+/**
+ * Moves that turn `from` into the layout `to`: every misplaced gear goes to the tray first,
+ * then each takes its spot in the order `to` lists them. Valid whenever `to` could be
+ * built gear by gear in that order, as generated levels are.
+ */
+export function movesTo(from: GearSystem, to: GearSystem): Move[] {
+  const spot = ({ axleId, layer }: { axleId: string | null; layer: number }) =>
+    axleId === null ? 'tray' : `${axleId}:${layer}`;
+  const target = new Map(to.gears.map((gear) => [gear.id, gear]));
+  const misplaced = new Set(
+    from.gears
+      .filter((gear) => {
+        const wanted = target.get(gear.id);
+        return wanted !== undefined && spot(wanted) !== spot(gear);
+      })
+      .map(({ id }) => id),
+  );
+
+  const lift = from.gears
+    .filter((gear) => misplaced.has(gear.id) && gear.axleId !== null)
+    .map((gear) => ({ gearId: gear.id, axleId: null, layer: gear.layer }));
+  const place = to.gears
+    .filter((gear) => misplaced.has(gear.id) && gear.axleId !== null)
+    .map((gear) => ({ gearId: gear.id, axleId: gear.axleId, layer: gear.layer }));
+  return [...lift, ...place];
+}

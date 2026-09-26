@@ -3,6 +3,7 @@ import { checkGoal } from '../core/goal';
 import { findMeshes } from '../core/model';
 import { moveGear, placementError } from '../core/placement';
 import { propagate } from '../core/propagate';
+import { movesTo } from '../core/solver';
 import { generateChain, generateLevel } from './generate';
 
 const seeds = Array.from({ length: 200 }, (_, i) => i + 1);
@@ -111,6 +112,17 @@ describe('generateLevel', () => {
         expect(placementError(board, gear.id, gear.axleId, gear.layer)).toBeNull();
         board = moveGear(board, gear.id, gear.axleId, gear.layer);
       }
+      expect(checkGoal(propagate(board), goal).kind).toBe('solved');
+    }
+  });
+
+  it('is solved by replaying the moves to its solution', () => {
+    for (const seed of seeds) {
+      const { level, solution, goal } = generateLevel(seed, { keep: 1 });
+      const board = movesTo(level, solution).reduce(
+        (layout, { gearId, axleId, layer }) => moveGear(layout, gearId, axleId, layer),
+        level,
+      );
       expect(checkGoal(propagate(board), goal).kind).toBe('solved');
     }
   });
