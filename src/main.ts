@@ -1,7 +1,12 @@
 import * as THREE from 'three';
 
-const container = document.getElementById('app');
-if (!container) throw new Error('#app container not found');
+function getContainer(): HTMLElement {
+  const element = document.getElementById('app');
+  if (!element) throw new Error('#app container not found');
+  return element;
+}
+
+const container = getContainer();
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -12,7 +17,7 @@ scene.background = new THREE.Color('#101418');
 const camera = new THREE.OrthographicCamera();
 
 function resize() {
-  const { clientWidth: width, clientHeight: height } = container!;
+  const { clientWidth: width, clientHeight: height } = container;
   const aspect = width / height;
   const viewSize = 10;
   camera.left = (-viewSize * aspect) / 2;
