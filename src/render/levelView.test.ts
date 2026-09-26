@@ -33,7 +33,7 @@ describe('LevelView', () => {
   it('makes room on the board for the gears of a given layout', () => {
     const start = moveGear(demoSolution, 'output-gear', null);
     const tight = new LevelView(start);
-    const roomy = new LevelView(start, demoSolution);
+    const roomy = new LevelView(start, { reach: demoSolution });
     expect(roomy.bounds.maxY).toBeGreaterThan(tight.bounds.maxY);
     expect(roomy.bounds.maxY).toBe(levelBounds(demoSolution).maxY);
   });

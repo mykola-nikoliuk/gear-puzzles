@@ -7,6 +7,7 @@ import { demoGoal, demoLevel, demoSolution } from './levels/demo';
 import { generateLevel } from './levels/generate';
 import { Clock } from './render/clock';
 import { enableGearDragging } from './render/dragGears';
+import { focusPoint, halfExtents } from './render/framing';
 import { LevelView } from './render/levelView';
 import { Simulation } from './render/simulation';
 import { createHud } from './ui/hud';
@@ -53,7 +54,11 @@ interface Mounted extends ActiveLevel {
 
 /** Builds the scene objects, simulation and input for one level. */
 function mount(start: GearSystem, goal: Goal, solution?: GearSystem): Mounted {
-  const view = new LevelView(start, solution);
+  const focus = focusPoint(start, goal.axleId);
+  const view = new LevelView(start, {
+    ...(solution ? { reach: solution } : {}),
+    trayCenterX: focus.x,
+  });
   view.markGoal(goal.axleId);
   const labelSet = new AxleLabels(start, view.pinTop);
   scene.add(view.root, labelSet.root);
@@ -93,13 +98,11 @@ function resize() {
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
 
-  const bounds = active.view.bounds;
-  const center = new THREE.Vector3(
-    (bounds.minX + bounds.maxX) / 2,
-    (bounds.minY + bounds.maxY) / 2,
-  );
-  const halfHeight = (bounds.maxY - bounds.minY) / 2;
-  const halfWidth = (bounds.maxX - bounds.minX) / 2 / camera.aspect;
+  const focus = focusPoint(active.start, active.goal.axleId);
+  const center = new THREE.Vector3(focus.x, focus.y);
+  const half = halfExtents(active.view.bounds, focus);
+  const halfHeight = half.height;
+  const halfWidth = half.width / camera.aspect;
   const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   const distance = (Math.max(halfHeight, halfWidth) * MARGIN) / tanHalfFov;
 

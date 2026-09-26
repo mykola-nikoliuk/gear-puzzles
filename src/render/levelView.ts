@@ -92,12 +92,16 @@ export class LevelView {
 
   /**
    * `reach` is a layout whose gears the board must have room for, usually the solution,
-   * so the finished train fits in the frame and clear of the tray.
+   * so the finished train fits in the frame and clear of the tray. The tray row is
+   * centred on `trayCenterX`, the middle of the board by default.
    */
-  constructor(system: GearSystem, reach: GearSystem = system) {
+  constructor(
+    system: GearSystem,
+    { reach = system, trayCenterX }: { reach?: GearSystem; trayCenterX?: number } = {},
+  ) {
     this.axles = new Map(system.axles.map((axle) => [axle.id, axle]));
     const board = mergeBounds(levelBounds(system), levelBounds(reach));
-    this.tray = trayLayout(system, board);
+    this.tray = trayLayout(system, board, trayCenterX);
     this.bounds = mergeBounds(board, this.tray.bounds);
     this.root.add(trayShelf(this.tray.bounds));
     const pinHeight = pinHeightFor(LAYERS - 1);

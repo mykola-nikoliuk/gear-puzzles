@@ -12,15 +12,24 @@ export interface TrayLayout {
 
 /**
  * A shelf under the board with a fixed slot for every gear that can move,
- * so the layout never shifts as gears come and go.
+ * so the layout never shifts as gears come and go. The row is centred on `centerX`,
+ * the middle of the board unless given.
  */
-export function trayLayout(system: GearSystem, board: Bounds): TrayLayout {
+export function trayLayout(
+  system: GearSystem,
+  board: Bounds,
+  centerX = (board.minX + board.maxX) / 2,
+): TrayLayout {
   const movable = system.gears.filter((gear) => gear.axleId !== system.driver.axleId);
   const tallest = Math.max(0, ...movable.map((gear) => tipRadius(gear.teeth)));
   const y = board.minY - GAP - tallest;
+  const width =
+    movable.reduce((sum, gear) => sum + 2 * tipRadius(gear.teeth), 0) +
+    GAP * Math.max(0, movable.length - 1);
+  const minX = centerX - width / 2;
 
   const slots = new Map<string, { x: number; y: number }>();
-  let x = board.minX;
+  let x = minX;
   for (const gear of movable) {
     const r = tipRadius(gear.teeth);
     slots.set(gear.id, { x: x + r, y });
@@ -29,7 +38,7 @@ export function trayLayout(system: GearSystem, board: Bounds): TrayLayout {
 
   return {
     slots,
-    bounds: { minX: board.minX, maxX: x - GAP, minY: y - tallest, maxY: y + tallest },
+    bounds: { minX, maxX: minX + width, minY: y - tallest, maxY: y + tallest },
   };
 }
 

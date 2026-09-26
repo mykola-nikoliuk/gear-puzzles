@@ -21,6 +21,16 @@ describe('trayLayout', () => {
     expect(tray.bounds.maxY).toBeLessThan(board.minY);
   });
 
+  it('centres the row under the board', () => {
+    const { minX, maxX } = tray.bounds;
+    expect((minX + maxX) / 2).toBeCloseTo(20);
+  });
+
+  it('centres the row on a given point', () => {
+    const { minX, maxX } = trayLayout(demoLevel, board, 5).bounds;
+    expect((minX + maxX) / 2).toBeCloseTo(5);
+  });
+
   it('lines gears up without overlap', () => {
     const [first, second] = [...tray.slots.values()];
     const gap = (second?.x ?? 0) - (first?.x ?? 0);
