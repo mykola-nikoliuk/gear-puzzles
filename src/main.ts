@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { checkGoal } from './core/goal';
-import { demoGoal, demoLevel, demoSolution } from './levels/demo';
+import { demoGoal, demoLevel } from './levels/demo';
 import { Clock } from './render/clock';
 import { enableGearDragging } from './render/dragGears';
 import { LevelView, levelBounds } from './render/levelView';
@@ -79,7 +79,8 @@ createPanel({
   clock,
   view: level,
   labels: labels.root,
-  layouts: { start: demoLevel, solution: demoSolution },
+  start: demoLevel,
+  goal: demoGoal,
   tilt,
 });
 

@@ -1,7 +1,10 @@
 import GUI from 'lil-gui';
 import type * as THREE from 'three';
 import { fraction, negate, type Fraction } from '../core/fraction';
+import type { Goal } from '../core/goal';
 import type { GearSystem } from '../core/model';
+import { moveGear, placementError } from '../core/placement';
+import { solve, type Move, type Solution } from '../core/solver';
 import type { Clock } from '../render/clock';
 import type { LevelView } from '../render/levelView';
 import type { Simulation } from '../render/simulation';
@@ -16,26 +19,44 @@ export function motorVelocity(speed: MotorSpeed, reversed: boolean): Fraction {
   return reversed ? negate(velocity) : velocity;
 }
 
+/** Pause between replayed solver moves, in milliseconds. */
+const MOVE_DELAY = 700;
+
+export function solveLabel(solution: Solution | null): string {
+  if (!solution) return 'Solve: no solution';
+  const count = solution.moves.length;
+  if (count === 0) return 'Solve: already solved';
+  return `Solve: ${count} ${count === 1 ? 'move' : 'moves'}`;
+}
+
 interface Options {
   readonly simulation: Simulation;
   readonly clock: Clock;
   readonly view: LevelView;
   readonly labels: THREE.Object3D;
-  readonly layouts: { readonly start: GearSystem; readonly solution: GearSystem };
+  readonly start: GearSystem;
+  readonly goal: Goal;
   /** Camera tilt from 0 (straight down) to 1; the callback re-frames the camera. */
   readonly tilt: { value: number; onChange: () => void };
 }
 
 /** A developer panel for poking at the demo: motor, looks and layout shortcuts. */
-export function createPanel({ simulation, clock, view, labels, layouts, tilt }: Options): GUI {
+export function createPanel({ simulation, clock, view, labels, start, goal, tilt }: Options): GUI {
   const gui = new GUI({ title: 'Gear Puzzles' });
   const state = {
     speed: '1/4' as MotorSpeed,
     reversed: false,
     paused: false,
     thickness: 1,
-    reset: () => setLayout(layouts.start),
-    solve: () => setLayout(layouts.solution),
+    reset: () => {
+      solveButton.name('Solve');
+      setLayout(start);
+    },
+    solve: () => {
+      const solution = solve(simulation.system, goal);
+      solveButton.name(solveLabel(solution));
+      if (solution) replay(solution.moves);
+    },
   };
 
   const driverVelocity = () => motorVelocity(state.speed, state.reversed);
@@ -45,6 +66,16 @@ export function createPanel({ simulation, clock, view, labels, layouts, tilt }: 
     view.placeGears(system);
   };
   const updateMotor = () => setLayout(simulation.system);
+
+  /** Plays the moves one by one; stops if the player has changed the board in between. */
+  const replay = ([move, ...rest]: readonly Move[]) => {
+    if (!move) return;
+    setTimeout(() => {
+      if (placementError(simulation.system, move.gearId, move.axleId) !== null) return;
+      setLayout(moveGear(simulation.system, move.gearId, move.axleId));
+      replay(rest);
+    }, MOVE_DELAY);
+  };
 
   const motor = gui.addFolder('Motor');
   motor
@@ -67,7 +98,7 @@ export function createPanel({ simulation, clock, view, labels, layouts, tilt }: 
 
   const level = gui.addFolder('Level');
   level.add(state, 'reset').name('Reset');
-  level.add(state, 'solve').name('Show solution');
+  const solveButton = level.add(state, 'solve').name('Solve');
 
   return gui;
 }
