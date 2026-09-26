@@ -1,10 +1,8 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { demoLevel } from './levels/demo';
-import { propagate } from './core/propagate';
-import { anglesAt } from './render/animate';
-import { initialAngles } from './render/phase';
 import { LevelView, levelBounds } from './render/levelView';
+import { Simulation } from './render/simulation';
 
 function getContainer(): HTMLElement {
   const element = document.getElementById('app');
@@ -29,8 +27,7 @@ sun.position.set(-20, -30, 60);
 scene.add(sun);
 
 const level = new LevelView(demoLevel);
-const propagation = propagate(demoLevel);
-const startAngles = initialAngles(demoLevel);
+const simulation = new Simulation(demoLevel);
 scene.add(level.root);
 
 const bounds = levelBounds(demoLevel);
@@ -59,6 +56,6 @@ window.addEventListener('resize', resize);
 resize();
 
 renderer.setAnimationLoop((time) => {
-  level.setAngles(anglesAt(demoLevel, propagation, startAngles, time / 1000));
+  level.setAngles(simulation.anglesAt(time / 1000));
   renderer.render(scene, camera);
 });
