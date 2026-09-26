@@ -42,6 +42,17 @@ describe('placementError', () => {
     expect(placementError(system, 'upper', 'a')).toBe('driver');
   });
 
+  it('lets any gear but the motor go to the tray', () => {
+    expect(placementError(system, 'big', null)).toBeNull();
+    expect(placementError(system, 'motor', null)).toBe('driver');
+  });
+
+  it('frees an axle once its gear goes to the tray', () => {
+    expect(placementError(system, 'big', 'c')).toBe('occupied');
+    const cleared = moveGear(system, 'loose', null);
+    expect(placementError(cleared, 'big', 'c')).toBeNull();
+  });
+
   it('reports unknown ids', () => {
     expect(placementError(system, 'nope', 'c')).toBe('unknown-gear');
     expect(placementError(system, 'loose', 'nope')).toBe('unknown-axle');

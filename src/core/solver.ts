@@ -5,7 +5,8 @@ import { propagate } from './propagate';
 
 export interface Move {
   readonly gearId: string;
-  readonly axleId: string;
+  /** `null` puts the gear back in the tray. */
+  readonly axleId: string | null;
 }
 
 export interface Solution {
@@ -28,9 +29,9 @@ const isSolved = (system: GearSystem, goal: Goal) =>
   checkGoal(propagate(system), goal).kind === 'solved';
 
 /**
- * Breadth-first search over layouts, one gear move at a time, so the first
- * solution found uses the fewest moves. Returns `null` if no layout within
- * reach meets the goal.
+ * Breadth-first search over layouts, one gear move at a time (onto an axle or into the
+ * tray), so the first solution found uses the fewest moves. Returns `null` if no layout
+ * within reach meets the goal.
  */
 export function solve(
   start: GearSystem,
@@ -47,7 +48,7 @@ export function solve(
     const next: Solution[] = [];
     for (const { moves, system } of frontier) {
       for (const { id: gearId } of movable) {
-        for (const { id: axleId } of system.axles) {
+        for (const axleId of [...system.axles.map(({ id }) => id), null]) {
           if (placementError(system, gearId, axleId) !== null) continue;
 
           const moved = moveGear(system, gearId, axleId);

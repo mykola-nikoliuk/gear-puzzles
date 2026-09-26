@@ -45,6 +45,26 @@ describe('solve', () => {
     expect(moves?.[1]).toEqual({ gearId: 'big', axleId: 'b' });
   });
 
+  it('places a gear from the tray', () => {
+    const inTray: GearSystem = {
+      ...blocked,
+      gears: blocked.gears.map((g) => (g.id === 'small' ? { ...g, axleId: null } : g)),
+    };
+    expect(solve(inTray, goal)?.moves).toEqual([{ gearId: 'big', axleId: 'b' }]);
+  });
+
+  it('can clear the way by putting a gear in the tray', () => {
+    // Without the spare axle, `small` can only make way for `big` by going to the tray.
+    const noSpare: GearSystem = {
+      ...blocked,
+      axles: blocked.axles.filter((a) => a.id !== 'spare'),
+    };
+    expect(solve(noSpare, goal)?.moves).toEqual([
+      { gearId: 'small', axleId: null },
+      { gearId: 'big', axleId: 'b' },
+    ]);
+  });
+
   it('gives up on an impossible goal', () => {
     expect(solve(demoLevel, { axleId: 'output', velocity: fraction(7, 3) })).toBeNull();
   });

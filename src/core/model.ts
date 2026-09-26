@@ -19,9 +19,16 @@ export interface Axle {
  */
 export interface Gear {
   readonly id: string;
-  readonly axleId: string;
+  /** `null` while the gear waits in the tray, off the board. */
+  readonly axleId: string | null;
   readonly teeth: number;
   readonly layer: number;
+}
+
+export type PlacedGear = Gear & { readonly axleId: string };
+
+export function isPlaced(gear: Gear): gear is PlacedGear {
+  return gear.axleId !== null;
 }
 
 export interface GearSystem {
@@ -62,19 +69,21 @@ export function meshes(a: Gear, b: Gear, axleA: Axle, axleB: Axle): boolean {
   return Math.abs(distance - pitchRadius(a.teeth) - pitchRadius(b.teeth)) < EPSILON;
 }
 
-export type Mesh = readonly [Gear, Gear];
+export type Mesh = readonly [PlacedGear, PlacedGear];
 
+/** Every meshing pair among the gears on the board; gears in the tray mesh with nothing. */
 export function findMeshes(system: GearSystem): Mesh[] {
   const axles = new Map(system.axles.map((axle) => [axle.id, axle]));
-  const axleOf = (gear: Gear): Axle => {
+  const axleOf = (gear: PlacedGear): Axle => {
     const axle = axles.get(gear.axleId);
     if (!axle) throw new Error(`Gear ${gear.id} sits on unknown axle ${gear.axleId}`);
     return axle;
   };
 
+  const placed = system.gears.filter(isPlaced);
   const result: Mesh[] = [];
-  system.gears.forEach((a, i) => {
-    for (const b of system.gears.slice(i + 1)) {
+  placed.forEach((a, i) => {
+    for (const b of placed.slice(i + 1)) {
       if (meshes(a, b, axleOf(a), axleOf(b))) result.push([a, b]);
     }
   });

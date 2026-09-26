@@ -59,6 +59,12 @@ describe('findMeshes', () => {
     ]);
   });
 
+  it('leaves gears in the tray out', () => {
+    const g1 = gear('g1', 'a', 8);
+    const tray: Gear = { id: 'g2', axleId: null, teeth: 12, layer: 0 };
+    expect(findMeshes(system([g1, tray]))).toEqual([]);
+  });
+
   it('throws on a gear with an unknown axle', () => {
     expect(() => findMeshes(system([gear('g1', 'a', 8), gear('g2', 'missing', 8)]))).toThrow(
       /unknown axle/,

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { tipRadius, type Axle, type GearSystem } from '../core/model';
+import { isPlaced, tipRadius, type Axle, type GearSystem } from '../core/model';
 import { GEAR_THICKNESS, gearGeometry, layerElevation } from './gearMesh';
 
 export interface Bounds {
@@ -17,7 +17,7 @@ export function levelBounds(system: GearSystem): Bounds {
   const axles = new Map(system.axles.map((axle) => [axle.id, axle]));
   const circles = [
     ...system.axles.map((axle) => ({ x: axle.x, y: axle.y, r: AXLE_MARGIN })),
-    ...system.gears.flatMap((gear) => {
+    ...system.gears.filter(isPlaced).flatMap((gear) => {
       const axle = axles.get(gear.axleId);
       return axle ? [{ x: axle.x, y: axle.y, r: tipRadius(gear.teeth) }] : [];
     }),
@@ -104,9 +104,14 @@ export class LevelView {
   placeGears(system: GearSystem): void {
     const axles = new Map(system.axles.map((axle) => [axle.id, axle]));
     for (const gear of system.gears) {
+      const mesh = this.gears.get(gear.id);
+      if (!mesh) continue;
+      mesh.visible = gear.axleId !== null;
+      if (gear.axleId === null) continue;
+
       const axle = axles.get(gear.axleId);
       if (!axle) throw new Error(`Gear ${gear.id} sits on unknown axle ${gear.axleId}`);
-      this.gears.get(gear.id)?.position.set(axle.x, axle.y, layerElevation(gear.layer));
+      mesh.position.set(axle.x, axle.y, layerElevation(gear.layer));
     }
   }
 

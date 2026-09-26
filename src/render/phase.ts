@@ -31,7 +31,7 @@ export function initialAngles(
   }
 
   const axleOf = (gear: Gear): Axle => {
-    const axle = axles.get(gear.axleId);
+    const axle = gear.axleId === null ? undefined : axles.get(gear.axleId);
     if (!axle) throw new Error(`Gear ${gear.id} sits on unknown axle ${gear.axleId}`);
     return axle;
   };

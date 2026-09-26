@@ -1,4 +1,4 @@
-import { meshes, tipRadius, type Axle, type Gear, type GearSystem } from './model';
+import { isPlaced, meshes, tipRadius, type Axle, type Gear, type GearSystem } from './model';
 
 export type PlacementError =
   /** The motor axle is part of the level: its gears cannot move and nothing can join them. */
@@ -10,15 +10,16 @@ export type PlacementError =
   /** Teeth would overlap with a gear they do not mesh with. */
   | 'collides';
 
-/** Why `gearId` cannot move to `axleId`, or `null` if it can. */
+/** Why `gearId` cannot move to `axleId` (`null` for the tray), or `null` if it can. */
 export function placementError(
   system: GearSystem,
   gearId: string,
-  axleId: string,
+  axleId: string | null,
 ): PlacementError | null {
   const gear = system.gears.find(({ id }) => id === gearId);
   if (!gear) return 'unknown-gear';
   if (gear.axleId === system.driver.axleId || axleId === system.driver.axleId) return 'driver';
+  if (axleId === null) return null;
 
   const axles = new Map(system.axles.map((axle) => [axle.id, axle]));
   const target = axles.get(axleId);
@@ -30,7 +31,7 @@ export function placementError(
   if (neighbours.some((other) => other.axleId === axleId)) return 'occupied';
 
   const moved: Gear = { ...gear, axleId };
-  for (const other of neighbours) {
+  for (const other of neighbours.filter(isPlaced)) {
     const otherAxle = axles.get(other.axleId);
     if (!otherAxle || meshes(moved, other, target, otherAxle)) continue;
     const distance = Math.hypot(target.x - otherAxle.x, target.y - otherAxle.y);
@@ -39,10 +40,10 @@ export function placementError(
   return null;
 }
 
-/** A copy of the system with the gear moved; throws if the move is not allowed. */
-export function moveGear(system: GearSystem, gearId: string, axleId: string): GearSystem {
+/** A copy of the system with the gear moved (to the tray for `null`); throws if not allowed. */
+export function moveGear(system: GearSystem, gearId: string, axleId: string | null): GearSystem {
   const error = placementError(system, gearId, axleId);
-  if (error) throw new Error(`Cannot move ${gearId} to ${axleId}: ${error}`);
+  if (error) throw new Error(`Cannot move ${gearId} to ${axleId ?? 'the tray'}: ${error}`);
   return {
     ...system,
     gears: system.gears.map((gear) => (gear.id === gearId ? { ...gear, axleId } : gear)),

@@ -16,7 +16,9 @@ export function anglesAt(
   for (const gear of system.gears) {
     const start = startAngles.get(gear.id) ?? 0;
     const velocity =
-      propagation.kind === 'running' ? propagation.velocities.get(gear.axleId) : undefined;
+      propagation.kind === 'running' && gear.axleId !== null
+        ? propagation.velocities.get(gear.axleId)
+        : undefined;
     const turns = velocity ? toNumber(velocity) * seconds : 0;
     angles.set(gear.id, start + turns * 2 * Math.PI);
   }
