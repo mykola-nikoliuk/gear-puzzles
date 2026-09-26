@@ -148,3 +148,87 @@ export function generateChain(
   }
   throw new Error(`No gear train with ${axles} axles fits for seed ${seed}`);
 }
+
+export interface LevelOptions extends ChainOptions {
+  /** Empty axles off the train, room to try things out. */
+  readonly spareAxles?: number;
+  /** Gears the solution does not need, waiting in the tray. */
+  readonly decoys?: number;
+  /** Gears of the solution left in place as a hint. */
+  readonly keep?: number;
+}
+
+export interface GeneratedLevel extends GeneratedChain {
+  /** The puzzle as the player gets it: the train taken apart into the tray. */
+  readonly level: GearSystem;
+}
+
+/** Room around the train where spare axles may land. */
+const SPARE_MARGIN = 6;
+
+function shuffle<T>(random: Random, items: readonly T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = random.int(0, i);
+    [result[i], result[j]] = [result[j] as T, result[i] as T];
+  }
+  return result;
+}
+
+function addSpareAxles(random: Random, solution: GearSystem, count: number): Axle[] {
+  const xs = solution.axles.map(({ x }) => x);
+  const ys = solution.axles.map(({ y }) => y);
+  const [minX, maxX] = [Math.min(...xs) - SPARE_MARGIN, Math.max(...xs) + SPARE_MARGIN];
+  const [minY, maxY] = [Math.min(...ys) - SPARE_MARGIN, Math.max(...ys) + SPARE_MARGIN];
+
+  let system = solution;
+  const spares: Axle[] = [];
+  for (let i = 0; spares.length < count && i < count * PLACEMENT_TRIES; i++) {
+    const x = minX + random.next() * (maxX - minX);
+    const y = minY + random.next() * (maxY - minY);
+    if (!roomForAxle(system, x, y)) continue;
+    const axle = { id: `spare-${spares.length + 1}`, x, y };
+    spares.push(axle);
+    system = { ...system, axles: [...system.axles, axle] };
+  }
+  return spares;
+}
+
+/**
+ * A puzzle built backwards: a working train, a few spare axles that keep clear of it and
+ * decoy gears, then every gear but the motor's (and `keep` hints) goes to a shuffled tray.
+ * Solvable by construction; other layouts that meet the goal count too.
+ */
+export function generateLevel(
+  seed: number,
+  { spareAxles = 2, decoys = 2, keep = 0, ...chain }: LevelOptions = {},
+): GeneratedLevel {
+  const { solution, goal } = generateChain(seed, chain);
+  // A separate stream, so changing the extras never changes the train itself.
+  const random = createRandom(seed ^ 0x9e3779b9);
+
+  const spares = addSpareAxles(random, solution, spareAxles);
+  const extras: Gear[] = Array.from({ length: decoys }, (_, i) => ({
+    id: `decoy-${i + 1}`,
+    axleId: null,
+    teeth: random.pick(TEETH),
+    layer: 0,
+  }));
+  const movable = solution.gears.filter((gear) => gear.axleId !== solution.driver.axleId);
+  const kept = new Set(
+    shuffle(random, movable)
+      .slice(0, keep)
+      .map(({ id }) => id),
+  );
+
+  const gears = solution.gears.map((gear) =>
+    gear.axleId === solution.driver.axleId || kept.has(gear.id) ? gear : { ...gear, axleId: null },
+  );
+  const [motorGear, ...rest] = gears;
+  const level: GearSystem = {
+    ...solution,
+    axles: [...solution.axles, ...spares],
+    gears: [...(motorGear ? [motorGear] : []), ...shuffle(random, [...rest, ...extras])],
+  };
+  return { solution: { ...level, gears: [...solution.gears, ...extras] }, goal, level };
+}
