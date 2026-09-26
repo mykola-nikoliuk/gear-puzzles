@@ -5,7 +5,7 @@ import { checkGoal } from './core/goal';
 import { demoGoal, demoLevel } from './levels/demo';
 import { Clock } from './render/clock';
 import { enableGearDragging } from './render/dragGears';
-import { LevelView, levelBounds } from './render/levelView';
+import { LevelView } from './render/levelView';
 import { Simulation } from './render/simulation';
 import { createHud } from './ui/hud';
 import { AxleLabels } from './ui/labels';
@@ -45,7 +45,7 @@ const labels = new AxleLabels(demoLevel, level.pinTop);
 scene.add(labels.root);
 const updateHud = createHud(container, demoGoal);
 
-const bounds = levelBounds(demoLevel);
+const bounds = level.bounds;
 const center = new THREE.Vector3((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2);
 const camera = new THREE.PerspectiveCamera(35);
 const tilt = { value: 0.6, onChange: () => resize() };

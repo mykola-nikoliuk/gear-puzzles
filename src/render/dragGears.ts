@@ -24,7 +24,8 @@ interface Drag {
 }
 
 /**
- * Lets the player pick a gear up, carry it over the board and drop it on an axle.
+ * Lets the player pick a gear up, carry it over the board and drop it on an axle;
+ * dropped anywhere else, it goes back to the tray.
  * While carried, the gear leaves the simulation, so the rest of the train reacts at once.
  * Returns a function that removes the listeners.
  */
@@ -100,7 +101,9 @@ export function enableGearDragging({ canvas, camera, view, simulation, now }: Op
     aim(event);
     const point = pointOnLayer(drag.gear.layer);
     const { axle, allowed } = point ? target(point, drag) : { axle: undefined, allowed: false };
-    const layout = axle && allowed ? moveGear(drag.layout, drag.gear.id, axle.id) : drag.layout;
+    // Onto a free axle it goes; a forbidden axle sends it back; open space means the tray.
+    const destination = axle ? (allowed ? axle.id : drag.gear.axleId) : null;
+    const layout = moveGear(drag.layout, drag.gear.id, destination);
 
     simulation.setSystem(layout, now());
     view.placeGears(layout);

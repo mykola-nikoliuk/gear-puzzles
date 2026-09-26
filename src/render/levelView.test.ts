@@ -15,8 +15,19 @@ describe('levelBounds', () => {
 describe('LevelView', () => {
   const view = new LevelView(demoSolution);
 
-  it('creates a pin per axle and a mesh per gear', () => {
-    expect(view.root.children).toHaveLength(demoSolution.axles.length + demoSolution.gears.length);
+  it('creates the tray shelf, a pin per axle and a mesh per gear', () => {
+    expect(view.root.children).toHaveLength(
+      1 + demoSolution.axles.length + demoSolution.gears.length,
+    );
+  });
+
+  it('rests gears from the tray on the shelf below the board', () => {
+    const fresh = new LevelView(demoSolution);
+    fresh.placeGears(moveGear(demoSolution, 'compound-small', null));
+    const position = fresh.gearMesh('compound-small')?.position;
+    expect(position?.z).toBe(0);
+    expect(position?.y).toBeLessThan(levelBounds(demoSolution).minY);
+    expect(fresh.bounds.minY).toBeLessThan(position?.y ?? 0);
   });
 
   it('places gears on their axle and layer', () => {

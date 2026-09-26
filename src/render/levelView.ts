@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { isPlaced, tipRadius, type Axle, type GearSystem } from '../core/model';
 import { GEAR_THICKNESS, gearGeometry, layerElevation } from './gearMesh';
+import { mergeBounds, trayLayout, type TrayLayout } from './tray';
 
 export interface Bounds {
   readonly minX: number;
@@ -46,6 +47,19 @@ function materialFor(color: string): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({ color, metalness: 0.6, roughness: 0.4 });
 }
 
+/** A flat dark plate under the tray slots. */
+function trayShelf(bounds: Bounds): THREE.Mesh {
+  const padding = 1;
+  const width = bounds.maxX - bounds.minX + 2 * padding;
+  const height = bounds.maxY - bounds.minY + 2 * padding;
+  const shelf = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, height),
+    new THREE.MeshStandardMaterial({ color: '#151b21', roughness: 0.95 }),
+  );
+  shelf.position.set((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2, -0.05);
+  return shelf;
+}
+
 /** Three.js objects for a level: one pin per axle and one spinning mesh per gear. */
 export class LevelView {
   readonly root = new THREE.Group();
@@ -53,9 +67,16 @@ export class LevelView {
   private readonly axles: ReadonlyMap<string, Axle>;
   private readonly pins = new Map<string, THREE.Mesh>();
   private readonly pinHeight: number;
+  private readonly tray: TrayLayout;
+  /** Board and tray together, for framing the camera. */
+  readonly bounds: Bounds;
 
   constructor(system: GearSystem) {
     this.axles = new Map(system.axles.map((axle) => [axle.id, axle]));
+    const board = levelBounds(system);
+    this.tray = trayLayout(system, board);
+    this.bounds = mergeBounds(board, this.tray.bounds);
+    this.root.add(trayShelf(this.tray.bounds));
     const topLayer = Math.max(0, ...system.gears.map((gear) => gear.layer));
     const pinHeight = layerElevation(topLayer) + GEAR_THICKNESS + 0.6;
     this.pinHeight = pinHeight;
@@ -106,8 +127,11 @@ export class LevelView {
     for (const gear of system.gears) {
       const mesh = this.gears.get(gear.id);
       if (!mesh) continue;
-      mesh.visible = gear.axleId !== null;
-      if (gear.axleId === null) continue;
+      if (gear.axleId === null) {
+        const slot = this.tray.slots.get(gear.id);
+        if (slot) mesh.position.set(slot.x, slot.y, 0);
+        continue;
+      }
 
       const axle = axles.get(gear.axleId);
       if (!axle) throw new Error(`Gear ${gear.id} sits on unknown axle ${gear.axleId}`);

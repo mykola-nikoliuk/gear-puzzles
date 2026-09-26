@@ -29,5 +29,5 @@ export const demoSolution: GearSystem = {
 /** The output turns 12/24 × 10/20 = 1/4 as fast as the motor, in the same direction. */
 export const demoGoal: Goal = { axleId: 'output', velocity: fraction(1, 16) };
 
-/** The starting layout: the small half of the compound gear lies on a spare axle. */
-export const demoLevel: GearSystem = moveGear(demoSolution, 'compound-small', 'spare-west');
+/** The starting layout: the small half of the compound gear waits in the tray. */
+export const demoLevel: GearSystem = moveGear(demoSolution, 'compound-small', null);
