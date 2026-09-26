@@ -20,6 +20,13 @@ export function motorVelocity(speed: MotorSpeed, reversed: boolean): Fraction {
   return reversed ? negate(velocity) : velocity;
 }
 
+/** Below this window width the panel starts folded, so it does not cover the board. */
+const WIDE_WINDOW = 1200;
+
+export function startsOpen(windowWidth: number): boolean {
+  return windowWidth >= WIDE_WINDOW;
+}
+
 /** Layouts the solver may explore before the panel falls back to the known answer. */
 const SOLVE_BUDGET = 20_000;
 
@@ -70,6 +77,7 @@ export interface Panel {
 /** A developer panel for poking at the demo: motor, looks and layout shortcuts. */
 export function createPanel({ clock, level, tilt, generate, demo }: Options): Panel {
   const gui = new GUI({ title: 'Gear Puzzles' });
+  if (!startsOpen(window.innerWidth)) gui.close();
   const state = {
     speed: '1/4' as MotorSpeed,
     reversed: false,

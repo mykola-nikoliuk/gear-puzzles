@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fraction } from '../core/fraction';
 import { demoLevel } from '../levels/demo';
-import { MOTOR_SPEEDS, motorVelocity, solveLabel } from './panel';
+import { MOTOR_SPEEDS, motorVelocity, solveLabel, startsOpen } from './panel';
 
 describe('motorVelocity', () => {
   it('parses every offered speed', () => {
@@ -29,5 +29,12 @@ describe('solveLabel', () => {
   it('says when there is nothing to do or no way to do it', () => {
     expect(solveLabel({ moves: [], system: demoLevel })).toBe('Solve: already solved');
     expect(solveLabel(null)).toBe('Solve: no solution');
+  });
+});
+
+describe('startsOpen', () => {
+  it('folds the panel on narrow windows and opens it on wide ones', () => {
+    expect(startsOpen(984)).toBe(false);
+    expect(startsOpen(1440)).toBe(true);
   });
 });
