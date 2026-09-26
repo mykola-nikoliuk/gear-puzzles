@@ -91,6 +91,13 @@ describe('LevelView', () => {
     expect(line.material.depthFunc).toBe(THREE.GreaterDepth);
   });
 
+  it('makes gears of turned metal, with the motor gear painted', () => {
+    const steel = view.gearMesh('compound-big')?.material;
+    expect(steel?.metalness).toBe(1);
+    expect(steel?.roughnessMap).toBeInstanceOf(THREE.DataTexture);
+    expect(view.gearMesh('motor-gear')?.material.metalness).toBeLessThan(0.5);
+  });
+
   it('rotates gears around their axle', () => {
     view.setAngles(new Map([['output-gear', 1.5]]));
     expect(view.gearMesh('output-gear')?.rotation.z).toBe(1.5);

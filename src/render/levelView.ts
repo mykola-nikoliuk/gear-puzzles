@@ -10,6 +10,7 @@ import {
 } from '../core/model';
 import { GEAR_THICKNESS, gearEdgeGeometry, gearGeometry, layerElevation } from './gearMesh';
 import { carryLength, carryPosition, followFactor, type Point3 } from './motion';
+import { turnedTexture } from './metal';
 import { mergeBounds, trayLayout, type TrayLayout } from './tray';
 
 export interface Bounds {
@@ -76,7 +77,17 @@ export type Highlight = keyof typeof HIGHLIGHTS | null;
 type GearMesh = THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
 
 function materialFor(color: string): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({ color, metalness: 0.6, roughness: 0.4 });
+  return new THREE.MeshStandardMaterial({ color, metalness: 0.8, roughness: 0.35 });
+}
+
+/** Bare turned metal; the motor gear is painted, so it reflects far less. */
+function gearMaterial(teeth: number, painted: boolean): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({
+    color: DRIVER_COLOR,
+    metalness: painted ? 0.3 : 1,
+    roughness: 0.6,
+    roughnessMap: turnedTexture(tipRadius(teeth)),
+  });
 }
 
 /** A flat dark plate under the tray slots. */
@@ -156,7 +167,7 @@ export class LevelView {
 
     for (const gear of system.gears) {
       const isDriver = gear.axleId === system.driver.axleId;
-      const mesh = new THREE.Mesh(gearGeometry(gear.teeth), materialFor(DRIVER_COLOR));
+      const mesh = new THREE.Mesh(gearGeometry(gear.teeth), gearMaterial(gear.teeth, isDriver));
       if (!isDriver) this.layered.add(gear.id);
       mesh.add(new THREE.LineLoop(gearEdgeGeometry(gear.teeth), HIDDEN_EDGE));
       this.root.add(mesh);

@@ -37,7 +37,7 @@ container.appendChild(labelRenderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#101418');
 scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment()).texture;
-scene.environmentIntensity = 0.25;
+scene.environmentIntensity = 0.45;
 
 const sun = new THREE.DirectionalLight('#ffffff', 1.2);
 sun.position.set(-20, -30, 60);
