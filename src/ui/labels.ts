@@ -32,6 +32,8 @@ export class AxleLabels {
       const object = new CSS2DObject(element);
       object.position.set(axle.x, axle.y, height);
       object.center.set(0.5, 1.4);
+      // Hidden until `update` has something to say; an empty axle never does.
+      object.visible = false;
       this.root.add(object);
       this.labels.set(axle.id, { object, text: '' });
     }
