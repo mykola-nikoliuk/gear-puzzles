@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { moveGear } from '../core/placement';
 import { demoSolution } from '../levels/demo';
 import { GEAR_THICKNESS, layerElevation } from './gearMesh';
+import { gearOutline } from './gearOutline';
 import { LevelView, LOOSE_COLOR, layerColor, levelBounds } from './levelView';
 
 describe('levelBounds', () => {
@@ -78,6 +79,16 @@ describe('LevelView', () => {
   it('shares geometry between gears with the same tooth count', () => {
     const other = new LevelView(demoSolution);
     expect(other.gearMesh('motor-gear')?.geometry).toBe(view.gearMesh('motor-gear')?.geometry);
+  });
+
+  it('outlines each gear on top, drawn only where another gear hides it', () => {
+    const [edge] = view.gearMesh('compound-big')?.children ?? [];
+    expect(edge).toBeInstanceOf(THREE.LineLoop);
+    const line = edge as THREE.LineLoop<THREE.BufferGeometry, THREE.LineBasicMaterial>;
+    expect(line.geometry.attributes.position?.count).toBe(gearOutline(24).length);
+    line.geometry.computeBoundingBox();
+    expect(line.geometry.boundingBox?.min.z).toBeGreaterThan(GEAR_THICKNESS);
+    expect(line.material.depthFunc).toBe(THREE.GreaterDepth);
   });
 
   it('rotates gears around their axle', () => {

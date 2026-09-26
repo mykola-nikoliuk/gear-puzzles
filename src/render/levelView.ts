@@ -8,7 +8,7 @@ import {
   type Axle,
   type GearSystem,
 } from '../core/model';
-import { GEAR_THICKNESS, gearGeometry, layerElevation } from './gearMesh';
+import { GEAR_THICKNESS, gearEdgeGeometry, gearGeometry, layerElevation } from './gearMesh';
 import { carryLength, carryPosition, followFactor, type Point3 } from './motion';
 import { mergeBounds, trayLayout, type TrayLayout } from './tray';
 
@@ -58,6 +58,18 @@ const CARRY_SPEED = 60;
 const CARRY_SECONDS = { min: 0.2, max: 0.6 } as const;
 /** How fast a gear's colour follows the layer it is headed for, per second. */
 const COLOR_RATE = 8;
+
+/**
+ * Draws only where something is in front, so teeth hidden under another gear show through
+ * as a faint outline and the meshing stays readable.
+ */
+export const HIDDEN_EDGE = new THREE.LineBasicMaterial({
+  color: '#1b2229',
+  transparent: true,
+  opacity: 0.55,
+  depthFunc: THREE.GreaterDepth,
+  depthWrite: false,
+});
 
 export type Highlight = keyof typeof HIGHLIGHTS | null;
 
@@ -146,6 +158,7 @@ export class LevelView {
       const isDriver = gear.axleId === system.driver.axleId;
       const mesh = new THREE.Mesh(gearGeometry(gear.teeth), materialFor(DRIVER_COLOR));
       if (!isDriver) this.layered.add(gear.id);
+      mesh.add(new THREE.LineLoop(gearEdgeGeometry(gear.teeth), HIDDEN_EDGE));
       this.root.add(mesh);
       this.gears.set(gear.id, mesh);
     }
