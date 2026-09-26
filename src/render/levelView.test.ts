@@ -1,22 +1,22 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { moveGear } from '../core/placement';
-import { demoLevel } from '../levels/demo';
+import { demoSolution } from '../levels/demo';
 import { layerElevation } from './gearMesh';
 import { LevelView, levelBounds } from './levelView';
 
 describe('levelBounds', () => {
   it('covers the tips of every gear and the room around empty axles', () => {
     // Output: 20 teeth, tip 10.75 around (27, 12). Spare axles at (-16, -4) and (0, -10), margin 3.
-    expect(levelBounds(demoLevel)).toEqual({ minX: -19, maxX: 37.75, minY: -13, maxY: 22.75 });
+    expect(levelBounds(demoSolution)).toEqual({ minX: -19, maxX: 37.75, minY: -13, maxY: 22.75 });
   });
 });
 
 describe('LevelView', () => {
-  const view = new LevelView(demoLevel);
+  const view = new LevelView(demoSolution);
 
   it('creates a pin per axle and a mesh per gear', () => {
-    expect(view.root.children).toHaveLength(demoLevel.axles.length + demoLevel.gears.length);
+    expect(view.root.children).toHaveLength(demoSolution.axles.length + demoSolution.gears.length);
   });
 
   it('places gears on their axle and layer', () => {
@@ -25,7 +25,7 @@ describe('LevelView', () => {
   });
 
   it('shares geometry between gears with the same tooth count', () => {
-    const other = new LevelView(demoLevel);
+    const other = new LevelView(demoSolution);
     expect(other.gearMesh('motor-gear')?.geometry).toBe(view.gearMesh('motor-gear')?.geometry);
   });
 
@@ -43,11 +43,11 @@ describe('LevelView', () => {
   });
 
   it('lifts a dragged gear and puts it back on its axle', () => {
-    const fresh = new LevelView(demoLevel);
+    const fresh = new LevelView(demoSolution);
     fresh.hoverGear('idler-gear', 3, 4, 0);
     expect(fresh.gearMesh('idler-gear')?.position.z).toBeGreaterThan(0);
 
-    fresh.placeGears(moveGear(demoLevel, 'idler-gear', 'spare-south'));
+    fresh.placeGears(moveGear(demoSolution, 'idler-gear', 'spare-south'));
     expect(fresh.gearMesh('idler-gear')?.position.toArray()).toEqual([0, -10, 0]);
   });
 

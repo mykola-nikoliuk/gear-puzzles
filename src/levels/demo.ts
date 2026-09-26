@@ -1,12 +1,13 @@
 import { fraction } from '../core/fraction';
+import type { Goal } from '../core/goal';
 import type { GearSystem } from '../core/model';
+import { moveGear } from '../core/placement';
 
 /**
- * A small hand-made train: the motor drives an idler and a compound gear,
- * whose small half passes the rotation up to the second layer.
- * Two spare axles leave room to rearrange the gears.
+ * The solved demo: the motor drives an idler and a compound gear, whose small half
+ * passes the rotation up to the second layer. Two spare axles leave room to rearrange.
  */
-export const demoLevel: GearSystem = {
+export const demoSolution: GearSystem = {
   axles: [
     { id: 'motor', x: 0, y: 0 },
     { id: 'idler', x: -6, y: 8 },
@@ -24,3 +25,9 @@ export const demoLevel: GearSystem = {
   ],
   driver: { axleId: 'motor', velocity: fraction(1, 4) },
 };
+
+/** The output turns 12/24 × 10/20 = 1/4 as fast as the motor, in the same direction. */
+export const demoGoal: Goal = { axleId: 'output', velocity: fraction(1, 16) };
+
+/** The starting layout: the small half of the compound gear lies on a spare axle. */
+export const demoLevel: GearSystem = moveGear(demoSolution, 'compound-small', 'spare-west');
