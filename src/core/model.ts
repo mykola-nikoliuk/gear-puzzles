@@ -31,7 +31,7 @@ export interface GearSystem {
   readonly driver: { readonly axleId: string; readonly velocity: Velocity };
 }
 
-/** Every tooth is one unit of arc, so the pitch radius grows linearly with the tooth count. */
+/** Module 1: the pitch diameter equals the tooth count, so every gear has the same tooth size. */
 export function pitchRadius(teeth: number): number {
   return teeth / 2;
 }
