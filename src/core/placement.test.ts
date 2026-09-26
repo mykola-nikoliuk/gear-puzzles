@@ -20,6 +20,9 @@ const system: GearSystem = {
   driver: { axleId: 'a', velocity: fraction(1) },
 };
 
+/** Without `near-b`, whose pin sits right under any gear on `b`. */
+const roomy: GearSystem = { ...system, axles: system.axles.filter(({ id }) => id !== 'near-b') };
+
 describe('placementError', () => {
   it('allows a move that meshes cleanly, ignoring gears on other layers', () => {
     // `big` meshes with the motor there; `upper` shares the axle but sits one layer higher.
@@ -32,6 +35,26 @@ describe('placementError', () => {
 
   it('refuses overlapping teeth', () => {
     expect(placementError(system, 'loose', 'near-b')).toBe('collides');
+  });
+
+  it('refuses covering another pin', () => {
+    expect(placementError(system, 'loose', 'b', 1)).toBe('pin');
+  });
+
+  it('passes over the short motor pin on a higher layer', () => {
+    const pins: GearSystem = {
+      axles: [
+        { id: 'motor', x: 0, y: 0 },
+        { id: 'beside', x: 3, y: 0 },
+      ],
+      gears: [
+        { id: 'motor-gear', axleId: 'motor', teeth: 4, layer: 0 },
+        { id: 'wide', axleId: null, teeth: 10, layer: 0 },
+      ],
+      driver: { axleId: 'motor', velocity: fraction(1) },
+    };
+    expect(placementError(pins, 'wide', 'beside', 0)).toBe('collides');
+    expect(placementError(pins, 'wide', 'beside', 1)).toBeNull();
   });
 
   it('keeps the motor gear in place', () => {
@@ -54,7 +77,7 @@ describe('placementError', () => {
   });
 
   it('lets a gear change layer, even on a taken axle', () => {
-    expect(placementError(system, 'loose', 'b', 1)).toBeNull();
+    expect(placementError(roomy, 'loose', 'b', 1)).toBeNull();
     expect(placementError(system, 'big', 'above-a', 1)).toBe('occupied');
   });
 
@@ -77,7 +100,7 @@ describe('moveGear', () => {
   });
 
   it('puts the gear on the given layer', () => {
-    const moved = moveGear(system, 'loose', 'b', 1);
+    const moved = moveGear(roomy, 'loose', 'b', 1);
     expect(moved.gears.find(({ id }) => id === 'loose')).toMatchObject({ axleId: 'b', layer: 1 });
   });
 
@@ -92,7 +115,7 @@ describe('bestLayer', () => {
   });
 
   it('goes up a layer when the one below is taken', () => {
-    expect(bestLayer(system, 'loose', 'b')).toBe(1);
+    expect(bestLayer(roomy, 'loose', 'b')).toBe(1);
   });
 
   it('skips a free layer to mesh with a neighbour above', () => {

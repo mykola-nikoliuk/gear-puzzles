@@ -3,6 +3,8 @@ import {
   isPlaced,
   LAYERS,
   meshes,
+  PIN_RADIUS,
+  pinTopLayer,
   tipRadius,
   type Axle,
   type Gear,
@@ -19,7 +21,9 @@ export type PlacementError =
   /** Another gear already sits on this axle and layer. */
   | 'occupied'
   /** Teeth would overlap with a gear they do not mesh with. */
-  | 'collides';
+  | 'collides'
+  /** The gear would cover another axle whose pin reaches its layer. */
+  | 'pin';
 
 /**
  * Why `gearId` cannot move to `layer` of `axleId` (`null` for the tray), or `null` if it can.
@@ -54,7 +58,14 @@ export function placementError(
     const distance = Math.hypot(target.x - otherAxle.x, target.y - otherAxle.y);
     if (distance < tipRadius(gear.teeth) + tipRadius(other.teeth)) return 'collides';
   }
-  return null;
+
+  const coversPin = system.axles.some(
+    (axle) =>
+      axle.id !== axleId &&
+      pinTopLayer(system, axle.id) >= onLayer &&
+      Math.hypot(axle.x - target.x, axle.y - target.y) < tipRadius(gear.teeth) + PIN_RADIUS,
+  );
+  return coversPin ? 'pin' : null;
 }
 
 /**

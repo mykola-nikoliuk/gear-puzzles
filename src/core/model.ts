@@ -28,6 +28,21 @@ export interface Gear {
 /** How many gears fit on one axle, one per layer. */
 export const LAYERS = 2;
 
+/** Radius of the pin on every axle. */
+export const PIN_RADIUS = 0.55;
+
+/**
+ * The highest layer an axle's pin reaches. The motor axle takes no more gears, so its pin
+ * stops at the motor gears; every other pin goes through all the layers.
+ */
+export function pinTopLayer(system: GearSystem, axleId: string): number {
+  if (axleId !== system.driver.axleId) return LAYERS - 1;
+  return Math.max(
+    0,
+    ...system.gears.filter((gear) => gear.axleId === axleId).map((gear) => gear.layer),
+  );
+}
+
 export type PlacedGear = Gear & { readonly axleId: string };
 
 export function isPlaced(gear: Gear): gear is PlacedGear {

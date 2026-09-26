@@ -1,5 +1,13 @@
 import * as THREE from 'three';
-import { isPlaced, LAYERS, tipRadius, type Axle, type GearSystem } from '../core/model';
+import {
+  isPlaced,
+  LAYERS,
+  PIN_RADIUS,
+  pinTopLayer,
+  tipRadius,
+  type Axle,
+  type GearSystem,
+} from '../core/model';
 import { GEAR_THICKNESS, gearGeometry, layerElevation } from './gearMesh';
 import { mergeBounds, trayLayout, type TrayLayout } from './tray';
 
@@ -91,18 +99,14 @@ export class LevelView {
     const pinHeight = pinHeightFor(LAYERS - 1);
     this.pinHeight = pinHeight;
     // The motor axle takes no more gears, so its pin stops just above the motor gear.
-    const driverLayer = Math.max(
-      0,
-      ...system.gears.filter(({ axleId }) => axleId === system.driver.axleId).map((g) => g.layer),
-    );
     // Standing on the board: the base at z = 0.
     const pinGeometry = (height: number) =>
-      new THREE.CylinderGeometry(0.55, 0.55, height, 24)
+      new THREE.CylinderGeometry(PIN_RADIUS, PIN_RADIUS, height, 24)
         .rotateX(Math.PI / 2)
         .translate(0, 0, height / 2);
     const tall = pinGeometry(pinHeight);
     // A short cap keeps it clearly below the next layer.
-    const short = pinGeometry(pinHeightFor(driverLayer, 0.3));
+    const short = pinGeometry(pinHeightFor(pinTopLayer(system, system.driver.axleId), 0.3));
     const pinMaterial = materialFor('#3a434d');
 
     for (const axle of system.axles) {

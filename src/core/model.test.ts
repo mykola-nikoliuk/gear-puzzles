@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { fraction } from './fraction';
-import { findMeshes, meshes, pitchRadius, type Axle, type Gear, type GearSystem } from './model';
+import {
+  findMeshes,
+  LAYERS,
+  meshes,
+  pinTopLayer,
+  pitchRadius,
+  type Axle,
+  type Gear,
+  type GearSystem,
+} from './model';
 
 const axle = (id: string, x: number, y = 0): Axle => ({ id, x, y });
 const gear = (id: string, axleId: string, teeth: number, layer = 0): Gear => ({
@@ -77,5 +86,21 @@ describe('findMeshes', () => {
     expect(() => findMeshes(system([gear('g1', 'a', 8), gear('g2', 'missing', 8)]))).toThrow(
       /unknown axle/,
     );
+  });
+});
+
+describe('pinTopLayer', () => {
+  const system: GearSystem = {
+    axles: [axle('motor', 0), axle('free', 10)],
+    gears: [gear('motor-gear', 'motor', 8)],
+    driver: { axleId: 'motor', velocity: fraction(1) },
+  };
+
+  it('stops the motor pin at the motor gear', () => {
+    expect(pinTopLayer(system, 'motor')).toBe(0);
+  });
+
+  it('runs every other pin through all the layers', () => {
+    expect(pinTopLayer(system, 'free')).toBe(LAYERS - 1);
   });
 });

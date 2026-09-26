@@ -37,6 +37,7 @@ export function refusalText(system: GearSystem, gearId: string, axleId: string):
   if (errors.includes(null)) return null;
   if (errors.includes('driver')) return 'The motor axle takes no other gears';
   if (errors.includes('collides')) return 'Its teeth would clash with a neighbour';
+  if (errors.includes('pin')) return 'It would run into another pin';
   if (errors.every((error) => error === 'occupied')) return 'Both layers of this axle are taken';
   return 'The gear cannot go here';
 }
