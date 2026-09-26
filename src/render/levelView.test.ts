@@ -48,6 +48,17 @@ describe('LevelView', () => {
     expect(view.pinTop).toBeGreaterThan(layerElevation(1) + GEAR_THICKNESS);
   });
 
+  it('keeps the motor pin short, with no room for a second gear', () => {
+    const top = (axleId: string) => {
+      const geometry = view.pinMesh(axleId)?.geometry;
+      geometry?.computeBoundingBox();
+      return geometry?.boundingBox?.max.z ?? 0;
+    };
+    expect(top('motor')).toBeGreaterThan(GEAR_THICKNESS);
+    expect(top('motor')).toBeLessThan(layerElevation(1));
+    expect(top('idler')).toBeCloseTo(view.pinTop);
+  });
+
   it('shares geometry between gears with the same tooth count', () => {
     const other = new LevelView(demoSolution);
     expect(other.gearMesh('motor-gear')?.geometry).toBe(view.gearMesh('motor-gear')?.geometry);

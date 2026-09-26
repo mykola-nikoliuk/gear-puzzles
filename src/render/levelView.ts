@@ -64,6 +64,11 @@ function trayShelf(bounds: Bounds): THREE.Mesh {
   return shelf;
 }
 
+/** A pin reaching `cap` above the top of `layer`. */
+function pinHeightFor(layer: number, cap = 0.6): number {
+  return layerElevation(layer) + GEAR_THICKNESS + cap;
+}
+
 /** Three.js objects for a level: one pin per axle and one spinning mesh per gear. */
 export class LevelView {
   readonly root = new THREE.Group();
@@ -83,14 +88,27 @@ export class LevelView {
     this.tray = trayLayout(system, board);
     this.bounds = mergeBounds(board, this.tray.bounds);
     this.root.add(trayShelf(this.tray.bounds));
-    const pinHeight = layerElevation(LAYERS - 1) + GEAR_THICKNESS + 0.6;
+    const pinHeight = pinHeightFor(LAYERS - 1);
     this.pinHeight = pinHeight;
-    const pinGeometry = new THREE.CylinderGeometry(0.55, 0.55, pinHeight, 24).rotateX(Math.PI / 2);
+    // The motor axle takes no more gears, so its pin stops just above the motor gear.
+    const driverLayer = Math.max(
+      0,
+      ...system.gears.filter(({ axleId }) => axleId === system.driver.axleId).map((g) => g.layer),
+    );
+    // Standing on the board: the base at z = 0.
+    const pinGeometry = (height: number) =>
+      new THREE.CylinderGeometry(0.55, 0.55, height, 24)
+        .rotateX(Math.PI / 2)
+        .translate(0, 0, height / 2);
+    const tall = pinGeometry(pinHeight);
+    // A short cap keeps it clearly below the next layer.
+    const short = pinGeometry(pinHeightFor(driverLayer, 0.3));
     const pinMaterial = materialFor('#3a434d');
 
     for (const axle of system.axles) {
-      const pin = new THREE.Mesh(pinGeometry, pinMaterial);
-      pin.position.set(axle.x, axle.y, pinHeight / 2);
+      const geometry = axle.id === system.driver.axleId ? short : tall;
+      const pin = new THREE.Mesh(geometry, pinMaterial);
+      pin.position.set(axle.x, axle.y, 0);
       this.root.add(pin);
       this.pins.set(axle.id, pin);
     }
@@ -175,6 +193,10 @@ export class LevelView {
       const mesh = this.gears.get(id);
       if (mesh) mesh.rotation.z = angle;
     }
+  }
+
+  pinMesh(axleId: string): THREE.Mesh | undefined {
+    return this.pins.get(axleId);
   }
 
   gearMesh(id: string): GearMesh | undefined {
