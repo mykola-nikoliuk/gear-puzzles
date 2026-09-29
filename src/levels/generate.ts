@@ -237,9 +237,6 @@ export interface GeneratedLevel extends GeneratedChain {
   readonly level: GearSystem;
 }
 
-/** Room around the train where spare axles may land. */
-const SPARE_MARGIN = 6;
-
 function shuffle<T>(random: Random, items: readonly T[]): T[] {
   const result = [...items];
   for (let i = result.length - 1; i > 0; i--) {
@@ -249,17 +246,19 @@ function shuffle<T>(random: Random, items: readonly T[]): T[] {
   return result;
 }
 
+/**
+ * Spare axles where a gear could mesh with the train, mostly to the right like the train
+ * itself, so they pass for a branch the player might take rather than stray pins.
+ */
 function addSpareAxles(random: Random, solution: GearSystem, count: number): Axle[] {
-  const xs = solution.axles.map(({ x }) => x);
-  const ys = solution.axles.map(({ y }) => y);
-  const [minX, maxX] = [Math.min(...xs) - SPARE_MARGIN, Math.max(...xs) + SPARE_MARGIN];
-  const [minY, maxY] = [Math.min(...ys) - SPARE_MARGIN, Math.max(...ys) + SPARE_MARGIN];
-
   let system = solution;
   const spares: Axle[] = [];
   for (let i = 0; spares.length < count && i < count * PLACEMENT_TRIES; i++) {
-    const x = minX + random.next() * (maxX - minX);
-    const y = minY + random.next() * (maxY - minY);
+    const from = random.pick(solution.axles);
+    const distance = pitchRadius(random.pick(TEETH)) + pitchRadius(random.pick(TEETH));
+    const angle = (random.next() * 2 - 1) * (Math.PI / 2);
+    const x = from.x + distance * Math.cos(angle);
+    const y = from.y + distance * Math.sin(angle);
     if (!roomForAxle(system, x, y)) continue;
     const axle = { id: `spare-${spares.length + 1}`, x, y };
     spares.push(axle);
