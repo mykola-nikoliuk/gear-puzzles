@@ -14,6 +14,8 @@ A level is a chain of axles after the motor:
 - "axles": ${SPEC_LIMITS.axles.min} to ${SPEC_LIMITS.axles.max} steps. Each has "teeth", the gear driven by the
   previous axle. An optional "then" is a second gear stacked on the same axle (a compound gear)
   that drives the next axle instead. The last axle is the output and has no "then".
+- A gear may never cover another axle, on either layer. Next to a compound gear this bites: the
+  neighbour axle sits (then + next teeth)/2 away, which must clear the big gear's radius.
 - Gear sizes are ${TEETH.join(', ')} teeth.
 - "goal": the output speed as an exact fraction string, e.g. "-3/32". Work it out: each mesh
   multiplies the speed by -(driving teeth)/(driven teeth).

@@ -1,5 +1,5 @@
 import { equals, fraction, multiply, negate, toString, type Fraction } from '../core/fraction';
-import { pitchRadius, tipRadius } from '../core/model';
+import { PIN_RADIUS, pitchRadius, tipRadius } from '../core/model';
 import { MOTOR_TEETH, MOTOR_VELOCITY, TEETH, type TrainAxle, type TrainPlan } from './generate';
 
 /**
@@ -75,6 +75,31 @@ export function stackClashes(plan: TrainPlan): string[] {
         `axles[${i - 1}]: they share a layer ${apart} apart but need ${needed}. The distance is ` +
         `half of axles[${i - 1}].then + axles[${i}].teeth, so make those bigger, make ` +
         `axles[${i - 1}].teeth or axles[${i}].then smaller, or put a plain axle between the stages.`,
+    ];
+  });
+}
+
+/**
+ * No gear may cover another axle, on either layer. Next to a compound gear the neighbour axle
+ * sits only as far out as the stacked gear reaches, so the big gear under it, or a big stacked
+ * gear on the neighbour, can land on a pin. One message per clash.
+ */
+export function pinClashes(plan: TrainPlan): string[] {
+  return plan.axles.flatMap((axle, i) => {
+    const next = plan.axles[i + 1];
+    if (axle.then === undefined || !next) return [];
+    const apart = pitchRadius(axle.then) + pitchRadius(next.teeth);
+    const covers = (where: string, teeth: number, pin: string) =>
+      apart >= tipRadius(teeth) + PIN_RADIUS
+        ? []
+        : [
+            `${where} (${teeth} teeth) covers the pin of ${pin}: the axles are ${apart} apart ` +
+              `but need ${tipRadius(teeth) + PIN_RADIUS}. The distance is half of ` +
+              `axles[${i}].then + axles[${i + 1}].teeth, so make those bigger or ${where} smaller.`,
+          ];
+    return [
+      ...covers(`axles[${i}].teeth`, axle.teeth, `axles[${i + 1}]`),
+      ...(next.then === undefined ? [] : covers(`axles[${i + 1}].then`, next.then, `axles[${i}]`)),
     ];
   });
 }
@@ -165,7 +190,8 @@ export function parseSpec(input: unknown): SpecResult {
 
   // The train checks below are only worth running once its parts are valid.
   const partsValid = errors.length === 0;
-  if (partsValid) errors.push(...stackClashes({ motorTeeth, axles }));
+  if (partsValid)
+    errors.push(...stackClashes({ motorTeeth, axles }), ...pinClashes({ motorTeeth, axles }));
 
   const goal = typeof input.goal === 'string' ? parseFraction(input.goal) : null;
   if (!goal) {

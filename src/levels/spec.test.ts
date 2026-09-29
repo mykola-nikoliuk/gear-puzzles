@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fraction } from '../core/fraction';
-import { outputVelocity, parseFraction, parseSpec, stackClashes } from './spec';
+import { outputVelocity, parseFraction, parseSpec, pinClashes, stackClashes } from './spec';
 
 const valid = {
   title: 'Slow it down',
@@ -79,6 +79,32 @@ describe('stackClashes', () => {
   });
 });
 
+describe('pinClashes', () => {
+  const withIdler = (teeth: number) => ({
+    motorTeeth: 10,
+    axles: [{ teeth: 20, then: 10 }, { teeth }, { teeth: 20, then: 10 }, { teeth: 20 }],
+  });
+
+  it('finds a big gear that covers the next axle', () => {
+    const [clash, ...rest] = pinClashes(withIdler(12));
+    expect(rest).toEqual([]);
+    expect(clash).toContain('axles[0].teeth (20 teeth) covers the pin of axles[1]');
+    expect(clash).toContain('11 apart but need 11.3');
+  });
+
+  it('lets a neighbour far enough out pass', () => {
+    expect(pinClashes(withIdler(14))).toEqual([]);
+  });
+
+  it('finds a big stacked gear that covers the axle before it', () => {
+    const plan = {
+      motorTeeth: 12,
+      axles: [{ teeth: 8, then: 8 }, { teeth: 8, then: 24 }, { teeth: 24 }],
+    };
+    expect(pinClashes(plan)[0]).toContain('axles[1].then (24 teeth) covers the pin of axles[0]');
+  });
+});
+
 describe('parseSpec', () => {
   it('accepts a valid spec', () => {
     expect(parseSpec(valid)).toEqual({ ok: true, spec: valid });
@@ -114,6 +140,13 @@ describe('parseSpec', () => {
     expect(errorsOf({ ...valid, spareAxles: 9 })).toHaveLength(1);
     expect(errorsOf({ ...valid, decoys: [8, 8, 8, 8, 8] })).toHaveLength(1);
     expect(errorsOf({ ...valid, title: 'x'.repeat(61) })).toHaveLength(1);
+  });
+
+  it('catches a gear that covers a pin', () => {
+    const axles = [{ teeth: 20, then: 10 }, { teeth: 12 }, { teeth: 20 }];
+    expect(errorsOf({ ...valid, axles, goal: '-3/40' })).toEqual([
+      expect.stringContaining('covers the pin'),
+    ]);
   });
 
   it('reports a clash along with a wrong goal', () => {
