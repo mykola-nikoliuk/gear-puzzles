@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fraction } from '../core/fraction';
 import { demoLevel } from '../levels/demo';
-import { MOTOR_SPEEDS, motorVelocity, solveLabel, startsOpen } from './panel';
+import { MOTOR_SPEEDS, motorVelocity, solveLabel, startsOpen, storedKey, storeKey } from './panel';
 
 describe('motorVelocity', () => {
   it('parses every offered speed', () => {
@@ -36,5 +36,46 @@ describe('startsOpen', () => {
   it('folds the panel on narrow windows and opens it on wide ones', () => {
     expect(startsOpen(984)).toBe(false);
     expect(startsOpen(1440)).toBe(true);
+  });
+});
+
+describe('the stored key', () => {
+  const memory = () => {
+    const items = new Map<string, string>();
+    return {
+      getItem: (key: string) => items.get(key) ?? null,
+      setItem: (key: string, value: string) => void items.set(key, value),
+      removeItem: (key: string) => void items.delete(key),
+    };
+  };
+
+  it('comes back on the next visit', () => {
+    const storage = memory();
+    storeKey(storage, 'sk-test');
+    expect(storedKey(storage)).toBe('sk-test');
+  });
+
+  it('is forgotten when cleared', () => {
+    const storage = memory();
+    storeKey(storage, 'sk-test');
+    storeKey(storage, '');
+    expect(storedKey(storage)).toBe('');
+  });
+
+  it('survives storage that throws or is missing', () => {
+    const blocked = {
+      getItem: () => {
+        throw new Error('blocked');
+      },
+      setItem: () => {
+        throw new Error('blocked');
+      },
+      removeItem: () => {
+        throw new Error('blocked');
+      },
+    };
+    expect(() => storeKey(blocked, 'sk-test')).not.toThrow();
+    expect(storedKey(blocked)).toBe('');
+    expect(storedKey(undefined)).toBe('');
   });
 });

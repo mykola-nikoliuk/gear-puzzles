@@ -1,11 +1,15 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
+import authoredData from './ai/authored.json';
+import { authorLevel } from './ai/author';
+import { loadGallery, type GalleryLevel } from './ai/gallery';
 import { encodeLoop, loopFrames } from './dev/loopGif';
 import { toNumber } from './core/fraction';
 import { checkGoal, type Goal } from './core/goal';
 import type { GearSystem } from './core/model';
 import { demoGoal, demoLevel, demoSolution } from './levels/demo';
+import type { AuthoredLevel } from './levels/build';
 import { generateLevel } from './levels/generate';
 import { numberedLevel } from './levels/progression';
 import { loopPeriod } from './render/animate';
@@ -14,7 +18,7 @@ import { enableGearDragging } from './render/dragGears';
 import { focusPoint, frameCenter, halfExtents } from './render/framing';
 import { LevelView, levelBounds, type Bounds } from './render/levelView';
 import { Simulation } from './render/simulation';
-import { createHud, levelTitle } from './ui/hud';
+import { authoredNote, createHud, levelTitle } from './ui/hud';
 import { AxleLabels } from './ui/labels';
 import { createPanel, type ActiveLevel } from './ui/panel';
 
@@ -44,9 +48,18 @@ const sun = new THREE.DirectionalLight('#ffffff', 1.2);
 sun.position.set(-20, -30, 60);
 scene.add(sun);
 
+/** Levels Claude wrote offline, each proven again as the page loads. */
+const gallery = loadGallery(authoredData);
+
 /** 0 for the hand-made demo; the Next button moves on to generated level 1, 2, … */
 let levelNumber = 0;
+/** The gallery level on screen, if any; Next then moves through the gallery. */
+let galleryIndex: number | null = null;
 const hud = createHud(container, demoGoal, () => {
+  if (galleryIndex !== null && galleryIndex + 1 < gallery.length) {
+    playGallery(galleryIndex + 1);
+    return;
+  }
   levelNumber += 1;
   const { level, goal, solution } = numberedLevel(levelNumber);
   load(level, goal, solution);
@@ -133,10 +146,56 @@ resize();
 
 /** Swaps the level on screen, keeping the panel's settings. */
 function load(start: GearSystem, goal: Goal, solution?: GearSystem) {
+  galleryIndex = null;
+  hud.setNotes([]);
   active.unmount();
   active = mount(start, goal, solution);
   resize();
   panel.sync();
+}
+
+/** Mounts a level Claude wrote, with its lesson and how it was checked. */
+function playAuthored(authored: GalleryLevel | AuthoredLevel, title: string, caught: number) {
+  load(authored.level, authored.goal, authored.solution);
+  hud.setTitle(title);
+  hud.setNotes([authored.spec.lesson, authoredNote(authored.minMoves, caught)]);
+}
+
+function playGallery(index: number) {
+  const authored = gallery[index];
+  if (!authored) return;
+  playAuthored(
+    authored,
+    `Claude ${index + 1}/${gallery.length}: ${authored.spec.title}`,
+    authored.caught.length,
+  );
+  galleryIndex = index;
+}
+
+/** Asks Claude for a level with the player's own key; nothing unproven reaches the board. */
+async function writeLevel(brief: string, apiKey: string) {
+  if (!apiKey.trim()) {
+    hud.setHint('Paste your Anthropic API key in the panel first');
+    return;
+  }
+  hud.setHint(null);
+  hud.setNotes(['Claude is writing a level…']);
+  try {
+    const { claudeComplete } = await import('./ai/anthropic');
+    const seed = Math.floor(Math.random() * 99_999) + 1;
+    const result = await authorLevel(brief, claudeComplete(apiKey.trim()), { seed });
+    const caught = result.attempts.reduce((sum, { errors }) => sum + errors.length, 0);
+    if (result.ok) {
+      playAuthored(result.level, `Claude: ${result.level.spec.title}`, caught);
+    } else {
+      hud.setNotes([]);
+      const last = result.attempts.at(-1)?.errors ?? [];
+      hud.setHint(`No level passed the checks. Last errors: ${last.join(' ')}`);
+    }
+  } catch (error) {
+    hud.setNotes([]);
+    hud.setHint(error instanceof Error ? error.message : String(error));
+  }
 }
 
 const panel = createPanel({
@@ -157,6 +216,9 @@ const panel = createPanel({
     load(demoLevel, demoGoal, demoSolution);
     hud.setTitle(levelTitle(levelNumber));
   },
+  authored: gallery.map(({ spec }) => spec.title),
+  playAuthored: playGallery,
+  write: (brief, apiKey) => void writeLevel(brief, apiKey),
 });
 
 function frame() {

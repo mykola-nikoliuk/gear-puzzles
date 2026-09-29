@@ -47,6 +47,19 @@ export function refusalText(system: GearSystem, gearId: string, axleId: string):
   return 'The gear cannot go here';
 }
 
+/** Where an AI-written level came from and how it was checked. */
+export function authoredNote(minMoves: number | null, caught: number): string {
+  const proof =
+    minMoves === null
+      ? 'replayed move by move'
+      : `solvable in ${minMoves} ${minMoves === 1 ? 'move' : 'moves'}`;
+  const fixes =
+    caught === 0
+      ? ''
+      : ` Checks caught ${caught} ${caught === 1 ? 'mistake' : 'mistakes'} on the way.`;
+  return `Written by Claude, proven by the solver: ${proof}.${fixes}`;
+}
+
 /** The way on to the next level opens once the puzzle is solved. */
 export function offersNext(status: GoalStatus): boolean {
   return status.kind === 'solved';
@@ -58,6 +71,8 @@ export interface Hud {
   setStatus(status: GoalStatus): void;
   /** A passing note under the status, such as why a drop is refused; `null` hides it. */
   setHint(text: string | null): void;
+  /** Lines about the level itself, such as its lesson; empty hides them. */
+  setNotes(lines: readonly string[]): void;
 }
 
 /** A small overlay with the goal, the live status, a hint line and, once solved, a way on. */
@@ -74,12 +89,15 @@ export function createHud(parent: HTMLElement, goal: Goal, onNext: () => void): 
   const hintLine = document.createElement('div');
   hintLine.className = 'hud-hint';
   hintLine.hidden = true;
+  const notes = document.createElement('div');
+  notes.className = 'hud-notes';
+  notes.hidden = true;
   const next = document.createElement('button');
   next.className = 'hud-next';
   next.textContent = 'Next level →';
   next.hidden = true;
   next.addEventListener('click', onNext);
-  hud.append(titleLine, goalLine, statusLine, hintLine, next);
+  hud.append(titleLine, goalLine, statusLine, hintLine, notes, next);
   parent.append(hud);
 
   return {
@@ -99,6 +117,12 @@ export function createHud(parent: HTMLElement, goal: Goal, onNext: () => void): 
     setHint(text) {
       hintLine.textContent = text ?? '';
       hintLine.hidden = text === null;
+    },
+    setNotes(lines) {
+      notes.replaceChildren(
+        ...lines.map((line) => Object.assign(document.createElement('p'), { textContent: line })),
+      );
+      notes.hidden = lines.length === 0;
     },
   };
 }

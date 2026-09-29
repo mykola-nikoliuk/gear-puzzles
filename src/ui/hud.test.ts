@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { fraction } from '../core/fraction';
 import { moveGear } from '../core/placement';
 import { demoSolution } from '../levels/demo';
-import { formatVelocity, goalText, levelTitle, offersNext, refusalText, statusText } from './hud';
+import {
+  authoredNote,
+  formatVelocity,
+  goalText,
+  levelTitle,
+  offersNext,
+  refusalText,
+  statusText,
+} from './hud';
 
 describe('formatVelocity', () => {
   it('shows counter-clockwise speeds with ↺', () => {
@@ -72,5 +80,23 @@ describe('levelTitle', () => {
   it('calls the demo a tutorial and numbers the rest', () => {
     expect(levelTitle(0)).toBe('Tutorial');
     expect(levelTitle(3)).toBe('Level 3');
+  });
+});
+
+describe('authoredNote', () => {
+  it('says how the level was proven and what was caught', () => {
+    expect(authoredNote(3, 2)).toBe(
+      'Written by Claude, proven by the solver: solvable in 3 moves. Checks caught 2 mistakes on the way.',
+    );
+  });
+
+  it('leaves out a clean first try', () => {
+    expect(authoredNote(2, 0)).toBe(
+      'Written by Claude, proven by the solver: solvable in 2 moves.',
+    );
+  });
+
+  it('falls back to the replayed solution when the solver gave up', () => {
+    expect(authoredNote(null, 1)).toContain('replayed move by move. Checks caught 1 mistake');
   });
 });

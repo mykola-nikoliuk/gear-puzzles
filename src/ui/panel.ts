@@ -66,6 +66,36 @@ interface Options {
   readonly generate: (request: GenerateRequest) => void;
   /** Mounts the hand-made demo level again. */
   readonly demo: () => void;
+  /** Titles of the Claude-written levels in the gallery. */
+  readonly authored: readonly string[];
+  /** Mounts gallery level `index`. */
+  readonly playAuthored: (index: number) => void;
+  /** Asks Claude for a new level with the player's own key. */
+  readonly write: (brief: string, apiKey: string) => void;
+}
+
+const KEY_STORAGE = 'gear-puzzles.anthropic-key';
+
+/** The player's API key from an earlier visit, if this browser kept it. */
+export function storedKey(storage: Pick<Storage, 'getItem'> | undefined): string {
+  try {
+    return storage?.getItem(KEY_STORAGE) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/** Keeps the key in this browser only; an empty key forgets it. */
+export function storeKey(
+  storage: Pick<Storage, 'setItem' | 'removeItem'> | undefined,
+  key: string,
+) {
+  try {
+    if (key) storage?.setItem(KEY_STORAGE, key);
+    else storage?.removeItem(KEY_STORAGE);
+  } catch {
+    // Storage can be blocked; the key then lasts for this visit only.
+  }
 }
 
 export interface Panel {
@@ -75,7 +105,16 @@ export interface Panel {
 }
 
 /** A developer panel for poking at the demo: motor, looks and layout shortcuts. */
-export function createPanel({ clock, level, tilt, generate, demo }: Options): Panel {
+export function createPanel({
+  clock,
+  level,
+  tilt,
+  generate,
+  demo,
+  authored,
+  playAuthored,
+  write,
+}: Options): Panel {
   const gui = new GUI({ title: 'Gear Puzzles' });
   if (!startsOpen(window.innerWidth)) gui.close();
   const state = {
@@ -162,6 +201,26 @@ export function createPanel({ clock, level, tilt, generate, demo }: Options): Pa
   generator.add(actions, 'generate').name('Generate');
   generator.add(actions, 'random').name('Random level');
   generator.add(actions, 'demo').name('Back to the demo');
+
+  const claude = gui.addFolder('Claude levels');
+  const gallery = { level: -1 };
+  const titles = Object.fromEntries(authored.map((title, index) => [title, index]));
+  claude
+    .add(gallery, 'level', titles)
+    .name('Gallery')
+    .onChange((index: number) => playAuthored(index));
+  const writer = {
+    brief: 'A compound gear that slows the output to 1/32',
+    key: storedKey(globalThis.localStorage),
+    write: () => {
+      storeKey(globalThis.localStorage, writer.key);
+      write(writer.brief, writer.key);
+    },
+  };
+  claude.add(writer, 'brief').name('Brief');
+  const keyField = claude.add(writer, 'key').name('Your API key');
+  keyField.domElement.querySelector('input')?.setAttribute('type', 'password');
+  claude.add(writer, 'write').name('Write a level');
 
   return {
     gui,
