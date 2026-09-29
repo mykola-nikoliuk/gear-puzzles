@@ -30,7 +30,30 @@ axle turns at the target speed and direction.
   speed and direction, gear thickness, axle labels and camera tilt. It also has Reset and Solve,
   plus the generator settings.
 
-Planned: levels written by an LLM, each checked by the solver before it is accepted.
+## Levels written by Claude
+
+Claude writes levels, and the game keeps only the ones it can prove. The model never places
+gears on the board. It writes a short JSON spec: the motor gear, the chain of axles with their
+tooth counts and compound gears, the goal speed as it worked it out, spare axles, decoys, a
+lesson and hints. The code then checks the spec:
+
+1. **Shape and ranges.** Only the game's gear sizes and sane limits pass.
+2. **Arithmetic.** The goal speed is recomputed as an exact fraction. A wrong sum is rejected,
+   together with the right value.
+3. **Geometry.** The checks catch stacked gears that would clash on a layer and gears that would
+   cover a neighbouring axle, with the exact distances.
+4. **Proof.** The level is laid out on the board. The solution is replayed move by legal move,
+   and the solver confirms that the level cannot be solved in fewer than two moves.
+
+Each failed check goes back to Claude as an error to fix, up to three tries. The HUD shows how
+many mistakes the checks caught on the way, so the model's slips stay visible.
+
+- **Gallery.** `yarn author` asks Claude for a level for each brief in `src/ai/briefs.ts` and
+  saves the ones that pass to `src/ai/authored.json`. It needs `ANTHROPIC_API_KEY` in `.env`.
+  The page proves every saved level again when it loads and drops any that fail.
+- **Write your own.** In the panel's _Claude levels_ folder, enter a brief and your own
+  Anthropic API key, then press _Write a level_. The key stays in your browser's local storage
+  and goes only to the Anthropic API.
 
 ## Recording the GIF
 
@@ -40,7 +63,7 @@ shortest time in which every gear advances a whole number of teeth.
 
 ## Stack
 
-TypeScript, Three.js, Vite, Vitest.
+TypeScript, Three.js, Vite, Vitest, the Anthropic SDK.
 
 ## Scripts
 
@@ -49,4 +72,5 @@ yarn dev    # start the dev server
 yarn lint   # type-check, ESLint and Prettier
 yarn test   # unit tests
 yarn build  # production build
+yarn author # write the Claude gallery (needs ANTHROPIC_API_KEY in .env)
 ```
