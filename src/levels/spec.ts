@@ -1,4 +1,5 @@
 import { equals, fraction, multiply, negate, toString, type Fraction } from '../core/fraction';
+import { pitchRadius, tipRadius } from '../core/model';
 import { MOTOR_TEETH, MOTOR_VELOCITY, TEETH, type TrainAxle, type TrainPlan } from './generate';
 
 /**
@@ -55,6 +56,27 @@ export function outputVelocity(plan: TrainPlan): Fraction {
     driving = axle.then ?? axle.teeth;
   }
   return velocity;
+}
+
+/**
+ * Compound stages back to back cannot always fit: the second stage's stacked gear shares a
+ * layer with the first stage's driven gear, at a distance the meshes between them fix, so
+ * no layout can pull them apart. One message per clash.
+ */
+export function stackClashes(plan: TrainPlan): string[] {
+  return plan.axles.flatMap((axle, i) => {
+    const previous = plan.axles[i - 1];
+    if (axle.then === undefined || previous?.then === undefined) return [];
+    const apart = pitchRadius(previous.then) + pitchRadius(axle.teeth);
+    const needed = tipRadius(previous.teeth) + tipRadius(axle.then);
+    if (apart >= needed) return [];
+    return [
+      `axles[${i}].then (${axle.then} teeth) hits the ${previous.teeth}-tooth gear on ` +
+        `axles[${i - 1}]: they share a layer ${apart} apart but need ${needed}. The distance is ` +
+        `half of axles[${i - 1}].then + axles[${i}].teeth, so make those bigger, make ` +
+        `axles[${i - 1}].teeth or axles[${i}].then smaller, or put a plain axle between the stages.`,
+    ];
+  });
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -141,11 +163,14 @@ export function parseSpec(input: unknown): SpecResult {
     });
   }
 
+  // The train checks below are only worth running once its parts are valid.
+  const partsValid = errors.length === 0;
+  if (partsValid) errors.push(...stackClashes({ motorTeeth, axles }));
+
   const goal = typeof input.goal === 'string' ? parseFraction(input.goal) : null;
   if (!goal) {
     errors.push(`"goal" must be the output speed as a fraction string, like "-3/8".`);
-  } else if (errors.length === 0) {
-    // Only worth checking once the train itself is valid.
+  } else if (partsValid) {
     const actual = outputVelocity({ motorTeeth, axles });
     if (!equals(goal, actual)) {
       errors.push(

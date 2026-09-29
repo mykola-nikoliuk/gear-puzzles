@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fraction } from '../core/fraction';
-import { outputVelocity, parseFraction, parseSpec } from './spec';
+import { outputVelocity, parseFraction, parseSpec, stackClashes } from './spec';
 
 const valid = {
   title: 'Slow it down',
@@ -50,6 +50,35 @@ describe('outputVelocity', () => {
   });
 });
 
+describe('stackClashes', () => {
+  it('finds a stacked gear that hits the previous stage', () => {
+    const plan = {
+      motorTeeth: 12,
+      axles: [{ teeth: 24, then: 8 }, { teeth: 24, then: 8 }, { teeth: 24 }],
+    };
+    const [clash, ...rest] = stackClashes(plan);
+    expect(rest).toEqual([]);
+    expect(clash).toContain('axles[1].then (8 teeth) hits the 24-tooth gear on axles[0]');
+    expect(clash).toContain('16 apart but need 17.5');
+  });
+
+  it('lets stages pass that have room', () => {
+    const plan = {
+      motorTeeth: 12,
+      axles: [{ teeth: 12, then: 8 }, { teeth: 24, then: 12 }, { teeth: 24 }],
+    };
+    expect(stackClashes(plan)).toEqual([]);
+  });
+
+  it('ignores stages with a plain axle between them', () => {
+    const plan = {
+      motorTeeth: 12,
+      axles: [{ teeth: 24, then: 8 }, { teeth: 24 }, { teeth: 24, then: 8 }, { teeth: 24 }],
+    };
+    expect(stackClashes(plan)).toEqual([]);
+  });
+});
+
 describe('parseSpec', () => {
   it('accepts a valid spec', () => {
     expect(parseSpec(valid)).toEqual({ ok: true, spec: valid });
@@ -85,6 +114,11 @@ describe('parseSpec', () => {
     expect(errorsOf({ ...valid, spareAxles: 9 })).toHaveLength(1);
     expect(errorsOf({ ...valid, decoys: [8, 8, 8, 8, 8] })).toHaveLength(1);
     expect(errorsOf({ ...valid, title: 'x'.repeat(61) })).toHaveLength(1);
+  });
+
+  it('reports a clash along with a wrong goal', () => {
+    const axles = [{ teeth: 24, then: 8 }, { teeth: 24, then: 8 }, { teeth: 24 }];
+    expect(errorsOf({ ...valid, axles, goal: '1/2' })).toHaveLength(2);
   });
 
   it('reports every problem at once', () => {
