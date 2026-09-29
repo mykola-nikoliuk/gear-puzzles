@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.129.0",
     "lil-gui": "^0.21.0",
     "three": "^0.186.1"
   },
