@@ -4,6 +4,7 @@ import { moveGear } from '../core/placement';
 import { demoSolution } from '../levels/demo';
 import {
   authoredNote,
+  writingNote,
   formatVelocity,
   goalText,
   levelTitle,
@@ -80,6 +81,18 @@ describe('levelTitle', () => {
   it('calls the demo a tutorial and numbers the rest', () => {
     expect(levelTitle(0)).toBe('Tutorial');
     expect(levelTitle(3)).toBe('Level 3');
+  });
+});
+
+describe('writingNote', () => {
+  it('counts the tries', () => {
+    expect(writingNote(1, 3, [])).toBe('Claude is writing a level (try 1 of 3)…');
+  });
+
+  it('says what the last try got wrong', () => {
+    const note = writingNote(2, 3, ['"goal" says 1/8.', 'another']);
+    expect(note).toContain('(try 2 of 3)');
+    expect(note).toContain('caught 2 mistakes in the last one: "goal" says 1/8.');
   });
 });
 

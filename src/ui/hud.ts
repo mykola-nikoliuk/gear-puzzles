@@ -60,6 +60,18 @@ export function authoredNote(minMoves: number | null, caught: number): string {
   return `Written by Claude, proven by the solver: ${proof}.${fixes}`;
 }
 
+/** Progress while Claude writes a level: which try this is and what the last one got wrong. */
+export function writingNote(
+  attempt: number,
+  maxAttempts: number,
+  errors: readonly string[],
+): string {
+  const counter = `Claude is writing a level (try ${attempt} of ${maxAttempts})…`;
+  if (errors.length === 0) return counter;
+  const mistakes = errors.length === 1 ? 'a mistake' : `${errors.length} mistakes`;
+  return `${counter} The checks caught ${mistakes} in the last one: ${errors[0]}`;
+}
+
 /** The way on to the next level opens once the puzzle is solved. */
 export function offersNext(status: GoalStatus): boolean {
   return status.kind === 'solved';

@@ -26,6 +26,8 @@ export interface AuthorOptions {
   readonly maxAttempts?: number;
   /** Seed for laying the level out on the board. */
   readonly seed?: number;
+  /** Called before each try, counting from 1, with the errors the last one left to fix. */
+  readonly onAttempt?: (attempt: number, maxAttempts: number, errors: readonly string[]) => void;
 }
 
 function check(reply: string, seed: number): { level?: AuthoredLevel; errors: string[] } {
@@ -48,12 +50,13 @@ function check(reply: string, seed: number): { level?: AuthoredLevel; errors: st
 export async function authorLevel(
   brief: string,
   complete: Complete,
-  { maxAttempts = 3, seed = 1 }: AuthorOptions = {},
+  { maxAttempts = 3, seed = 1, onAttempt }: AuthorOptions = {},
 ): Promise<AuthorResult> {
   const turns: Turn[] = [{ role: 'user', content: briefPrompt(brief) }];
   const attempts: Attempt[] = [];
 
   for (let i = 0; i < maxAttempts; i++) {
+    onAttempt?.(i + 1, maxAttempts, attempts.at(-1)?.errors ?? []);
     const reply = await complete(turns);
     const { level, errors } = check(reply, seed);
     attempts.push({ reply, errors });

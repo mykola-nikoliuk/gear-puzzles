@@ -44,6 +44,20 @@ describe('authorLevel', () => {
     expect(retry[2]?.content).toContain('says 1/8');
   });
 
+  it('reports each try before it starts, with what the last one got wrong', async () => {
+    const wrong = JSON.stringify({ ...good, goal: '1/8' });
+    const { complete } = scripted(wrong, JSON.stringify(good));
+    const calls: [number, number, readonly string[]][] = [];
+    await authorLevel('anything', complete, {
+      onAttempt: (...args) => calls.push(args),
+    });
+    expect(calls.map(([attempt, max, errors]) => [attempt, max, errors.length])).toEqual([
+      [1, 3, 0],
+      [2, 3, 1],
+    ]);
+    expect(calls[1]?.[2][0]).toContain('says 1/8');
+  });
+
   it('reports a reply that is not JSON', async () => {
     const { complete } = scripted('Sure! Here is a level:', JSON.stringify(good));
     const result = await authorLevel('anything', complete);

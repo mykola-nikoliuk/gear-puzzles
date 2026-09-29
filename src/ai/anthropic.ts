@@ -8,8 +8,16 @@ export const MODEL = 'claude-opus-5-5';
  * A `Complete` backed by the Claude API. In the browser the key is the player's own and
  * goes straight to Anthropic, never through a server of ours.
  */
+export const TIMEOUT_MS = 90_000;
+
 export function claudeComplete(apiKey: string): Complete {
-  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+  const client = new Anthropic({
+    apiKey,
+    dangerouslyAllowBrowser: true,
+    // One try takes seconds; a request that runs this long is stuck, so give up and say so.
+    timeout: TIMEOUT_MS,
+    maxRetries: 1,
+  });
   return async (turns) => {
     const response = await client.beta.messages.create({
       model: MODEL,

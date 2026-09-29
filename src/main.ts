@@ -18,7 +18,7 @@ import { enableGearDragging } from './render/dragGears';
 import { focusPoint, frameCenter, halfExtents } from './render/framing';
 import { LevelView, levelBounds, type Bounds } from './render/levelView';
 import { Simulation } from './render/simulation';
-import { authoredNote, createHud, levelTitle } from './ui/hud';
+import { authoredNote, createHud, levelTitle, writingNote } from './ui/hud';
 import { AxleLabels } from './ui/labels';
 import { createPanel, type ActiveLevel } from './ui/panel';
 
@@ -179,11 +179,15 @@ async function writeLevel(brief: string, apiKey: string) {
     return;
   }
   hud.setHint(null);
-  hud.setNotes(['Claude is writing a level…']);
+  hud.setNotes([writingNote(1, 3, [])]);
   try {
     const { claudeComplete } = await import('./ai/anthropic');
     const seed = Math.floor(Math.random() * 99_999) + 1;
-    const result = await authorLevel(brief, claudeComplete(apiKey.trim()), { seed });
+    const result = await authorLevel(brief, claudeComplete(apiKey.trim()), {
+      seed,
+      onAttempt: (attempt, maxAttempts, errors) =>
+        hud.setNotes([writingNote(attempt, maxAttempts, errors)]),
+    });
     const caught = result.attempts.reduce((sum, { errors }) => sum + errors.length, 0);
     if (result.ok) {
       playAuthored(result.level, `Claude: ${result.level.spec.title}`, caught);
@@ -193,6 +197,7 @@ async function writeLevel(brief: string, apiKey: string) {
       hud.setHint(`No level passed the checks. Last errors: ${last.join(' ')}`);
     }
   } catch (error) {
+    console.error('Claude could not write a level', error);
     hud.setNotes([]);
     hud.setHint(error instanceof Error ? error.message : String(error));
   }
