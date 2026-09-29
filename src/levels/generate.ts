@@ -19,6 +19,8 @@ export const MOTOR_VELOCITY = fraction(1, 4);
 /** Axles closer than this look cramped, even when every gear fits. */
 const MIN_AXLE_GAP = 4;
 const PLACEMENT_TRIES = 40;
+/** Trains read left to right: the next axle goes this far off straight right, in radians. */
+const SWING = (40 / 180) * Math.PI;
 const ATTEMPTS = 50;
 
 export interface ChainOptions {
@@ -52,7 +54,10 @@ function roomForAxle(system: GearSystem, x: number, y: number): boolean {
   return !nearAxle && !underGear;
 }
 
-/** Tries to mesh a new gear with `from` on a fresh axle at a random angle. */
+/**
+ * Tries to mesh a new gear with `from` on a fresh axle to its right, give or take `SWING`;
+ * if half the tries find no room there, any angle will do.
+ */
 function extend(
   random: Random,
   system: GearSystem,
@@ -64,7 +69,8 @@ function extend(
   const distance = pitchRadius(from.gear.teeth) + pitchRadius(gear.teeth);
 
   for (let i = 0; i < PLACEMENT_TRIES; i++) {
-    const angle = random.next() * 2 * Math.PI;
+    const spread = i < PLACEMENT_TRIES / 2 ? SWING : Math.PI;
+    const angle = (random.next() * 2 - 1) * spread;
     const axle: Axle = {
       id: `axle-${index}`,
       x: from.axle.x + distance * Math.cos(angle),
@@ -116,7 +122,7 @@ export interface TrainAxle {
 }
 
 /**
- * Lays a train out on the board: the motor, then one axle after another at random angles.
+ * Lays a train out on the board: the motor, then one axle after another, left to right.
  * For each step, `compoundTeeth` sizes a gear stacked on the current axle (`null`: none) and
  * `axleTeeth` the gear on the next axle; `undefined` draws a size at random.
  * `null` if the layout does not fit.
