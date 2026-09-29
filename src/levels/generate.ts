@@ -213,13 +213,17 @@ export function chainFromPlan(plan: TrainPlan, seed: number): GeneratedChain | n
   return null;
 }
 
-export interface LevelOptions extends ChainOptions {
+export interface ExtrasOptions {
   /** Empty axles off the train, room to try things out. */
   readonly spareAxles?: number;
-  /** Gears the solution does not need, waiting in the tray. */
-  readonly decoys?: number;
+  /** Gears the solution does not need, waiting in the tray: how many, or their tooth counts. */
+  readonly decoys?: number | readonly number[];
   /** Gears of the solution left in place as a hint. */
   readonly keep?: number;
+}
+
+export interface LevelOptions extends ChainOptions, ExtrasOptions {
+  readonly decoys?: number;
 }
 
 export interface GeneratedLevel extends GeneratedChain {
@@ -265,17 +269,27 @@ function addSpareAxles(random: Random, solution: GearSystem, count: number): Axl
  */
 export function generateLevel(
   seed: number,
-  { spareAxles = 2, decoys = 2, keep = 0, ...chain }: LevelOptions = {},
+  { spareAxles, decoys, keep, ...chain }: LevelOptions = {},
 ): GeneratedLevel {
-  const { solution, goal } = generateChain(seed, chain);
+  return levelFromChain(generateChain(seed, chain), seed, { spareAxles, decoys, keep });
+}
+
+/** Takes a finished train apart into a puzzle, as `generateLevel` does. */
+export function levelFromChain(
+  { solution, goal }: GeneratedChain,
+  seed: number,
+  { spareAxles = 2, decoys = 2, keep = 0 }: ExtrasOptions = {},
+): GeneratedLevel {
   // A separate stream, so changing the extras never changes the train itself.
   const random = createRandom(seed ^ 0x9e3779b9);
 
   const spares = addSpareAxles(random, solution, spareAxles);
-  const extras: Gear[] = Array.from({ length: decoys }, (_, i) => ({
+  const decoyTeeth =
+    typeof decoys === 'number' ? Array.from({ length: decoys }, () => random.pick(TEETH)) : decoys;
+  const extras: Gear[] = decoyTeeth.map((teeth, i) => ({
     id: `decoy-${i + 1}`,
     axleId: null,
-    teeth: random.pick(TEETH),
+    teeth,
     layer: 0,
   }));
   const movable = solution.gears.filter((gear) => gear.axleId !== solution.driver.axleId);
