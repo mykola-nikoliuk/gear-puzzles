@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { fraction } from '../core/fraction';
 import { checkGoal } from '../core/goal';
 import { findMeshes } from '../core/model';
 import { moveGear, placementError } from '../core/placement';
 import { propagate } from '../core/propagate';
 import { movesTo } from '../core/solver';
-import { generateChain, generateLevel } from './generate';
+import { chainFromPlan, generateChain, generateLevel } from './generate';
 
 const seeds = Array.from({ length: 200 }, (_, i) => i + 1);
 
@@ -65,6 +66,44 @@ describe('generateChain', () => {
       const onMotor = solution.gears.filter((gear) => gear.axleId === solution.driver.axleId);
       expect(onMotor).toHaveLength(1);
     }
+  });
+});
+
+describe('chainFromPlan', () => {
+  // 12 → 24 on axle 1, whose stacked 12 drives 24 on axle 2: two 1:2 steps down.
+  const plan = { motorTeeth: 12, axles: [{ teeth: 24, then: 12 }, { teeth: 24 }] };
+
+  it('builds the gears the plan asks for', () => {
+    const chain = chainFromPlan(plan, 1);
+    expect(chain?.solution.gears.map(({ axleId, teeth, layer }) => [axleId, teeth, layer])).toEqual(
+      [
+        ['motor', 12, 0],
+        ['axle-1', 24, 0],
+        ['axle-1', 12, 1],
+        ['axle-3', 24, 1],
+      ],
+    );
+  });
+
+  it('sets the goal to the output speed', () => {
+    expect(chainFromPlan(plan, 1)?.goal).toEqual({ axleId: 'axle-3', velocity: fraction(1, 16) });
+  });
+
+  it('meets its own goal with moves the player could make', () => {
+    for (const seed of seeds.slice(0, 50)) {
+      const chain = chainFromPlan(plan, seed);
+      if (!chain) throw new Error(`No layout for seed ${seed}`);
+      expect(checkGoal(propagate(chain.solution), chain.goal).kind).toBe('solved');
+      for (const gear of chain.solution.gears) {
+        if (gear.axleId === chain.solution.driver.axleId) continue;
+        expect(placementError(chain.solution, gear.id, gear.axleId, gear.layer)).toBeNull();
+      }
+    }
+  });
+
+  it('lays the same plan out the same way for the same seed', () => {
+    expect(chainFromPlan(plan, 3)).toEqual(chainFromPlan(plan, 3));
+    expect(chainFromPlan(plan, 3)).not.toEqual(chainFromPlan(plan, 4));
   });
 });
 

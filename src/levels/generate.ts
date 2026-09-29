@@ -58,13 +58,9 @@ function extend(
   system: GearSystem,
   from: { readonly gear: Gear; readonly axle: Axle },
   index: number,
+  teeth: number = random.pick(TEETH),
 ): { system: GearSystem; gear: Gear; axle: Axle } | null {
-  const gear: Gear = {
-    id: `gear-${index}`,
-    axleId: null,
-    teeth: random.pick(TEETH),
-    layer: from.gear.layer,
-  };
+  const gear: Gear = { id: `gear-${index}`, axleId: null, teeth, layer: from.gear.layer };
   const distance = pitchRadius(from.gear.teeth) + pitchRadius(gear.teeth);
 
   for (let i = 0; i < PLACEMENT_TRIES; i++) {
@@ -90,9 +86,10 @@ function compound(
   system: GearSystem,
   on: { readonly gear: Gear; readonly axle: Axle },
   index: number,
+  teeth: number = random.pick(TEETH),
 ): { system: GearSystem; gear: Gear } | null {
   const layer = (on.gear.layer + 1) % LAYERS;
-  const gear: Gear = { id: `gear-${index}`, axleId: null, teeth: random.pick(TEETH), layer };
+  const gear: Gear = { id: `gear-${index}`, axleId: null, teeth, layer };
   const grown = withGear(system, gear);
   if (placementError(grown, gear.id, on.axle.id, layer) !== null) return null;
   return {
@@ -101,9 +98,38 @@ function compound(
   };
 }
 
-function tryChain(random: Random, axles: number, compoundChance: number): GeneratedChain | null {
+/** A train spelled out gear by gear, for levels written by hand or by an LLM. */
+export interface TrainPlan {
+  readonly motorTeeth: number;
+  /** One per axle after the motor, in order; the last is the output. */
+  readonly axles: readonly TrainAxle[];
+}
+
+export interface TrainAxle {
+  /** The gear driven by the previous axle, on the same layer as its driving gear. */
+  readonly teeth: number;
+  /**
+   * A second gear on the other layer of this axle, turning with it, that drives the next
+   * axle: a compound gear. Without it, the same gear drives the next axle.
+   */
+  readonly then?: number;
+}
+
+/**
+ * Lays a train out on the board: the motor, then one axle after another at random angles.
+ * For each step, `compoundTeeth` sizes a gear stacked on the current axle (`null`: none) and
+ * `axleTeeth` the gear on the next axle; `undefined` draws a size at random.
+ * `null` if the layout does not fit.
+ */
+function layOut(
+  random: Random,
+  motorTeeth: number,
+  axles: number,
+  compoundTeeth: (step: number) => number | null | undefined,
+  axleTeeth: (step: number) => number | undefined,
+): GeneratedChain | null {
   const motor: Axle = { id: 'motor', x: 0, y: 0 };
-  let gear: Gear = { id: 'gear-0', axleId: 'motor', teeth: random.pick(MOTOR_TEETH), layer: 0 };
+  let gear: Gear = { id: 'gear-0', axleId: 'motor', teeth: motorTeeth, layer: 0 };
   let system: GearSystem = {
     axles: [motor],
     gears: [gear],
@@ -113,19 +139,38 @@ function tryChain(random: Random, axles: number, compoundChance: number): Genera
   let gears = 1;
 
   for (let step = 1; step <= axles; step++) {
-    if (axle !== motor && random.chance(compoundChance)) {
-      const stacked = compound(random, system, { gear, axle }, gears);
+    const stackedTeeth = axle === motor ? null : compoundTeeth(step);
+    if (stackedTeeth !== null) {
+      const stacked = compound(random, system, { gear, axle }, gears, stackedTeeth);
       if (stacked) {
         ({ system, gear } = stacked);
         gears++;
+      } else if (stackedTeeth !== undefined) {
+        // A planned compound gear that does not fit makes the whole layout wrong.
+        return null;
       }
     }
-    const next = extend(random, system, { gear, axle }, gears);
+    const next = extend(random, system, { gear, axle }, gears, axleTeeth(step));
     if (!next) return null;
     ({ system, gear, axle } = next);
     gears++;
   }
+  return withGoal(system, axle);
+}
 
+function tryChain(random: Random, axles: number, compoundChance: number): GeneratedChain | null {
+  return layOut(
+    random,
+    random.pick(MOTOR_TEETH),
+    axles,
+    // `undefined` lets `compound` draw the teeth, exactly as before plans existed.
+    () => (random.chance(compoundChance) ? undefined : null),
+    () => undefined,
+  );
+}
+
+/** The goal a finished train meets: the output axle at the speed it turns. */
+function withGoal(system: GearSystem, axle: Axle): GeneratedChain | null {
   const propagation = propagate(system);
   if (propagation.kind !== 'running') return null;
   const velocity = propagation.velocities.get(axle.id);
@@ -147,6 +192,25 @@ export function generateChain(
     if (chain) return chain;
   }
   throw new Error(`No gear train with ${axles} axles fits for seed ${seed}`);
+}
+
+/**
+ * The train a plan describes, laid out at random angles from `seed`. `null` if no layout
+ * fits after many attempts: gears too big for their neighbours, say.
+ */
+export function chainFromPlan(plan: TrainPlan, seed: number): GeneratedChain | null {
+  const random = createRandom(seed);
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    const chain = layOut(
+      random,
+      plan.motorTeeth,
+      plan.axles.length,
+      (step) => plan.axles[step - 2]?.then ?? null,
+      (step) => plan.axles[step - 1]?.teeth,
+    );
+    if (chain) return chain;
+  }
+  return null;
 }
 
 export interface LevelOptions extends ChainOptions {
