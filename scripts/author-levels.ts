@@ -5,6 +5,8 @@
  *   ANTHROPIC_API_KEY in .env, then: yarn author
  */
 import { writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { format, resolveConfig } from 'prettier';
 import { claudeComplete, MODEL } from '../src/ai/anthropic';
 import { authorLevel } from '../src/ai/author';
 import type { AuthoredEntry } from '../src/ai/gallery';
@@ -30,5 +32,8 @@ for (const [index, brief] of BRIEFS.entries()) {
   }
 }
 
-writeFileSync(OUT, `${JSON.stringify({ model: MODEL, levels: entries }, null, 2)}\n`);
+const json = JSON.stringify({ model: MODEL, levels: entries });
+const filepath = fileURLToPath(OUT);
+const options = { ...(await resolveConfig(filepath)), filepath };
+writeFileSync(OUT, await format(json, options));
 console.log(`${entries.length}/${BRIEFS.length} levels written to src/ai/authored.json`);

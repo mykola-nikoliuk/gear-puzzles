@@ -1,4 +1,161 @@
 {
   "model": "claude-opus-5-5",
-  "levels": []
+  "levels": [
+    {
+      "brief": "An idler gear between two gears of the same size: the direction flips, the speed does not.",
+      "seed": 1,
+      "spec": {
+        "title": "The Idler's Trick",
+        "lesson": "An idler gear placed between two gears of the same size reverses the direction the output would otherwise turn, but it does not change the speed. The idler's own tooth count cancels out of the ratio.",
+        "motorTeeth": 12,
+        "axles": [{ "teeth": 20 }, { "teeth": 12 }],
+        "goal": "1/4",
+        "spareAxles": 2,
+        "decoys": [10, 16],
+        "hints": [
+          "The goal speed matches the motor exactly, and so does the direction.",
+          "Meshing a 12 straight onto the motor keeps the speed but reverses the direction. Put something in between.",
+          "A gear of any size between two 12-tooth gears flips the direction back without changing the speed. Try a 20."
+        ]
+      },
+      "caught": []
+    },
+    {
+      "brief": "Speed up: a big gear driving a small one makes the output turn faster than the motor.",
+      "seed": 2,
+      "spec": {
+        "title": "Big Drives Small, Twice",
+        "lesson": "When a big gear drives a small gear, the small gear spins faster. Chain two speed-ups on a compound axle to multiply the gains, and two meshes also turn the direction back to clockwise.",
+        "motorTeeth": 16,
+        "axles": [{ "teeth": 8, "then": 18 }, { "teeth": 12 }],
+        "goal": "3/4",
+        "spareAxles": 1,
+        "decoys": [10, 14, 24],
+        "hints": [
+          "The output must turn three times faster than the motor, and in the same direction. How many meshes keep the direction the same?",
+          "Each mesh multiplies speed by driving teeth over driven teeth. Try a 2x step followed by a 1.5x step.",
+          "16 driving 8 doubles the speed. Stack an 18 on that axle and let it drive a 12."
+        ]
+      },
+      "caught": [
+        "The solver finishes this level in 1 move, so it is not a puzzle. Add an axle to the train or change the goal."
+      ]
+    },
+    {
+      "brief": "Slow down: small gears driving big ones, two meshes in a row.",
+      "seed": 3,
+      "spec": {
+        "title": "Slow and Steady: Two-Step Gear Down",
+        "lesson": "When a small gear drives a big one, the big gear turns slower. Chain two such meshes and the slowdowns multiply, and the two direction flips cancel out.",
+        "motorTeeth": 12,
+        "axles": [{ "teeth": 24, "then": 10 }, { "teeth": 20 }],
+        "goal": "1/16",
+        "spareAxles": 1,
+        "decoys": [8, 16, 18],
+        "hints": [
+          "The output needs to turn four times slower than the motor. Can one mesh do all of that?",
+          "A 12-tooth gear driving a 24-tooth gear halves the speed. Stack a second small gear on that same axle.",
+          "Try motor 12 into 24, then a 10 on the same axle driving a 20. Two flips means clockwise again."
+        ]
+      },
+      "caught": []
+    },
+    {
+      "brief": "The first compound gear: two gears stacked on one axle turn together.",
+      "seed": 4,
+      "spec": {
+        "title": "Two Gears, One Axle",
+        "lesson": "Gears stacked on the same axle turn together at the same speed. A small gear stacked on a slow axle slows the next axle even more.",
+        "motorTeeth": 12,
+        "axles": [{ "teeth": 24, "then": 10 }, { "teeth": 20 }],
+        "goal": "1/16",
+        "spareAxles": 1,
+        "decoys": [16, 18],
+        "hints": [
+          "The output needs to turn four times slower than the motor, in the same direction.",
+          "Two meshes flip the direction twice, so the output ends up turning the same way as the motor.",
+          "Put a 24 on the middle axle to halve the speed, then stack a 10 on that same axle to drive a 20 and halve it again."
+        ]
+      },
+      "caught": []
+    },
+    {
+      "brief": "The output must turn the same way as the motor; count the meshes.",
+      "seed": 5,
+      "spec": {
+        "title": "Two Meshes Make It Right",
+        "lesson": "Each mesh reverses direction, so an even number of meshes makes the output turn the same way as the motor. A compound gear lets you slow down twice while keeping the count even.",
+        "motorTeeth": 12,
+        "axles": [{ "teeth": 24, "then": 10 }, { "teeth": 20 }],
+        "goal": "1/16",
+        "spareAxles": 1,
+        "decoys": [8, 14],
+        "hints": [
+          "The goal is positive, so the output must spin clockwise like the motor.",
+          "Count the meshes: one mesh flips the direction and two flip it back.",
+          "12 driving 24 halves the speed, then 10 driving 20 halves it again: 1/4 × 1/2 × 1/2 = 1/16."
+        ]
+      },
+      "caught": []
+    },
+    {
+      "brief": "Decoys that look right: a spare gear that gives the right speed in the wrong direction.",
+      "seed": 6,
+      "spec": {
+        "title": "Mirror Image",
+        "lesson": "Every mesh flips the direction of turning, so the right speed with an odd number of meshes from the motor spins the wrong way. Count the meshes, not just the ratio.",
+        "motorTeeth": 12,
+        "axles": [{ "teeth": 18, "then": 12 }, { "teeth": 16 }],
+        "goal": "1/8",
+        "spareAxles": 1,
+        "decoys": [24, 10],
+        "hints": [
+          "The goal is positive, which means clockwise, the same way the motor turns.",
+          "The 24 gets the speed right in one mesh, but check which way it spins.",
+          "Try two meshes: 12 to 18, then a 12 stacked on that axle driving a 16."
+        ]
+      },
+      "caught": []
+    },
+    {
+      "brief": "Two compound stages for a big reduction, 1/16 of the motor speed or slower.",
+      "seed": 7,
+      "spec": {
+        "title": "The Slow Grind: Two Compound Stages",
+        "lesson": "Stacking a small gear on the same axle as a big one lets each stage multiply the reduction, so two compound stages reach a far bigger slowdown than a single mesh can. Each mesh also flips the direction, so an odd number of meshes turns the output backward.",
+        "motorTeeth": 10,
+        "axles": [{ "teeth": 20, "then": 8 }, { "teeth": 24, "then": 8 }, { "teeth": 24 }],
+        "goal": "-1/72",
+        "spareAxles": 2,
+        "decoys": [14, 18],
+        "hints": [
+          "One mesh from the motor can't slow things down enough, so try stacking two gears on one axle.",
+          "A small gear driving a big gear slows the axle down, and repeating that trick multiplies the effect.",
+          "10 to 20 halves the speed, and each 8 to 24 stage divides it by 3 again: 1/4 × 1/2 × 1/3 × 1/3. Three meshes make it negative."
+        ]
+      },
+      "caught": [
+        "axles[1].then (8 teeth) hits the 24-tooth gear on axles[0]: they share a layer 16 apart but need 17.5. The distance is half of axles[0].then + axles[1].teeth, so make those bigger, make axles[0].teeth or axles[1].then smaller, or put a plain axle between the stages."
+      ]
+    },
+    {
+      "brief": "A compound gear that speeds up: the output turns faster than the motor.",
+      "seed": 8,
+      "spec": {
+        "title": "Double Boost",
+        "lesson": "A compound gear puts two gears on one axle, so the speed-ups multiply. Each time a big gear drives a small one, the next axle spins faster.",
+        "motorTeeth": 16,
+        "axles": [{ "teeth": 8, "then": 18 }, { "teeth": 12 }],
+        "goal": "3/4",
+        "spareAxles": 2,
+        "decoys": [10, 24],
+        "hints": [
+          "To speed up, a bigger gear should drive a smaller gear.",
+          "The 16-tooth motor driving an 8-tooth gear doubles the speed. Stack a second gear on that axle for another boost.",
+          "Put 8 and 18 on the middle axle, and let the 18 drive a 12 on the output: 1/4 × 2 × 1.5 = 3/4."
+        ]
+      },
+      "caught": []
+    }
+  ]
 }
