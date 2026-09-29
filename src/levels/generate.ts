@@ -13,9 +13,9 @@ import { moveGear, placementError } from '../core/placement';
 import { propagate } from '../core/propagate';
 import { createRandom, type Random } from './random';
 
-const MOTOR_TEETH = [10, 12, 14, 16] as const;
-const TEETH = [8, 10, 12, 14, 16, 18, 20, 24] as const;
-const MOTOR_VELOCITY = fraction(1, 4);
+export const MOTOR_TEETH = [10, 12, 14, 16] as const;
+export const TEETH = [8, 10, 12, 14, 16, 18, 20, 24] as const;
+export const MOTOR_VELOCITY = fraction(1, 4);
 /** Axles closer than this look cramped, even when every gear fits. */
 const MIN_AXLE_GAP = 4;
 const PLACEMENT_TRIES = 40;
